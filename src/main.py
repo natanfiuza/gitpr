@@ -42,7 +42,7 @@ def cli():
     if not pr_data:
         return
 
-    # 4. Formata o nome dinâmico do ficheiro de saída
+    # 4. Formata o nome dinâmico do arquivo de saída
     branch_name = get_current_branch()
     # Substitui barras por hífen para evitar a criação acidental de pastas (ex: feature/login -> feature-login)
     safe_branch_name = branch_name.replace("/", "-").replace("\\", "-")
@@ -67,13 +67,13 @@ def cli():
 {pr_data.get('pr_description', 'Sem descrição detalhada.')}
 """
 
-    # 6. Guarda o ficheiro no diretório de trabalho atual
+    # 6. Guarda o arquivo no diretório de trabalho atual
     try:
         with open(output_filename, "w", encoding="utf-8") as f:
             f.write(markdown_content)
-        click.secho(f"\n✅ Sucesso! O ficheiro '{output_filename}' foi gerado na pasta atual.", fg="green", bold=True)
+        click.secho(f"\n✅ Sucesso! O arquivo '{output_filename}' foi gerado na pasta atual.", fg="green", bold=True)
     except Exception as e:
-        click.secho(f"\n❌ Erro ao guardar o ficheiro: {e}", fg="red")
+        click.secho(f"\n❌ Erro ao guardar o arquivo: {e}", fg="red")
 
 if __name__ == "__main__":
     cli()

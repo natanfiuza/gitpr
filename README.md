@@ -9,7 +9,10 @@ Este projeto foi desenvolvido em Python e utiliza as seguintes bibliotecas princ
 * [**Click**](https://click.palletsprojects.com/): Para criar uma interface de linha de comando (CLI) robusta e amigável.  
 * [**Google GenAI**](https://pypi.org/project/google-genai/): Novo SDK oficial para integração direta com a API do Gemini (modelo gemini-2.5-flash).  
 * [**Python-dotenv**](https://pypi.org/project/python-dotenv/): Para a gestão segura de variáveis de ambiente.  
-* [**PyInstaller**](https://pyinstaller.org/): Para empacotar o projeto num único ficheiro executável, facilitando a distribuição.
+* [**PyInstaller**](https://pyinstaller.org/): Para empacotar o projeto num único arquivo executável, facilitando a distribuição.
+* [**Pytest**](https://docs.pytest.org/): Para execução de testes unitários de forma simples, colorida e legível no console.
+
+----
 
 ## 📦 Como Compilar o Executável Localmente
 
@@ -24,15 +27,36 @@ Se você deseja gerar o seu próprio binário a partir do código-fonte, utiliza
    ```bash
    pipenv run pyinstaller --noconfirm --onefile --name gitpr run.py
    ```
+> **Nota técnica:** A flag `--onefile` garante que todo o Python, bibliotecas e dependências ficam comprimidos 
+> num único binário, enquanto `--paths src` ajuda o compilador a encontrar os nossos arquivos `core.py` e `config.py`. 🛠️
 
-O compilador fará o rastreio automático de todos os módulos da pasta `src/`. Após a conclusão, o seu executável final e autossuficiente estará disponível dentro da pasta **`dist/`**.
+Após a execução deste comando, o PyInstaller vai criar algumas pastas (`build` e `dist`). 
+O seu arquivo final e pronto a usar estará dentro da pasta **`dist/`** com o nome `gitpr` (ou `gitpr.exe` no Windows). 
 
 
+----
+
+## 🧪 Executando Testes
+
+Para garantir que a lógica de captura do Git e a integração com a IA estejam funcionando corretamente, utilizamos testes unitários.
+
+1. Instale as dependências de teste (caso ainda não tenha feito):
+   ```bash
+   pipenv install --dev pytest
+   ```
+
+2. Execute os testes com o comando:
+   ```bash
+   pipenv run pytest -v
+   ```
+O Pytest irá detectar automaticamente os arquivos dentro da pasta `tests/` e apresentará um relatório detalhado da execução.
+
+----
 ## **⚙️ Instalação e Configuração**
 
 ### **Usando o Executável (Recomendado)**
 
-1. Faça o download do ficheiro executável gitpr na aba "Releases" do GitHub.  
+1. Faça o download do arquivo executável gitpr na aba "Releases" do GitHub.  
 2. Mova o executável para uma pasta que esteja no seu PATH (ex: /usr/local/bin no Linux/Mac ou na pasta do seu utilizador no Windows).  
 3. Na primeira execução, o assistente irá guiá-lo:  
    $ gitpr
@@ -49,9 +73,9 @@ O compilador fará o rastreio automático de todos os módulos da pasta `src/`. 
 
 🔑 Insira sua GEMINI\_API\_KEY:
 
-📄 Padrão do nome do ficheiro de saída \[{branch}\_{datetime}\_PR\_DESC.md\]:
+📄 Padrão do nome do arquivo de saída \[{branch}\_{datetime}\_PR\_DESC.md\]:
 
-\*Nota: A sua configuração será guardada em segurança no ficheiro \`\~/.gitpr/.env\`.\*
+\*Nota: A sua configuração será guardada em segurança no arquivo \`\~/.gitpr/.env\`.\*
 
 \#\#\# A partir do Código-Fonte
 
@@ -72,7 +96,7 @@ Após realizar as suas alterações num repositório Git e ANTES de fazer o comm
 
 gitpr
 
-A ferramenta irá capturar o seu git diff HEAD, processar através da IA e gerar um ficheiro Markdown (ex: feature-login\_20260421110134\_PR\_DESC.md) na raiz do seu projeto com a sugestão completa.
+A ferramenta irá capturar o seu git diff HEAD, processar através da IA e gerar um arquivo Markdown (ex: feature-login\_20260421110134\_PR\_DESC.md) na raiz do seu projeto com a sugestão completa.
 
 ## **🤝 Como Contribuir**
 
@@ -92,4 +116,4 @@ Projeto idealizado e desenvolvido por:
 
 ## **📄 Licença**
 
-Este projeto está licenciado sob a **GNU Lesser General Public License v2.1 (LGPL-2.1)**. Consulte o ficheiro LICENSE para mais detalhes.
+Este projeto está licenciado sob a **GNU Lesser General Public License v2.1 (LGPL-2.1)**. Consulte o arquivo LICENSE para mais detalhes.
