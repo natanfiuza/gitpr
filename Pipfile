@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+google-generativeai = "*"
+python-dotenv = "*"
+click = "*"
+
+[dev-packages]
+pyinstaller = "*"
+
+[requires]
+python_version = "3.13"
+python_full_version = "3.13.7"

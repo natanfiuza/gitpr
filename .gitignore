@@ -1,0 +1,18 @@
+# Ambientes virtuais
+.venv
+Pipfile.lock
+
+# Arquivos compilados do Python
+__pycache__/
+*.py[cod]
+
+# Arquivos de Build do PyInstaller
+build/
+dist/
+*.spec
+
+# Variáveis de ambiente locais
+.env
+
+# MacOS
+.DS_Store
