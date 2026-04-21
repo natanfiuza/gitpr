@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import click
 from dotenv import load_dotenv
+from src.security import encrypt_data
 
 def setup_environment():
     """
@@ -31,7 +32,7 @@ def setup_environment():
         )
         
         with open(env_file, "w", encoding="utf-8") as f:
-            f.write(f"GEMINI_API_KEY={api_key}\n")
+            f.write(f"GEMINI_API_KEY={encrypt_data(api_key)}\n")
             f.write(f"GEMINI_API_MODEL={api_model}\n")
             f.write(f"OUTPUT_FILE_NAME={output_filename}\n")
             

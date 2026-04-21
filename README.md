@@ -11,6 +11,7 @@ Este projeto foi desenvolvido em Python e utiliza as seguintes bibliotecas princ
 * [**Python-dotenv**](https://pypi.org/project/python-dotenv/): Para a gestão segura de variáveis de ambiente.  
 * [**PyInstaller**](https://pyinstaller.org/): Para empacotar o projeto num único arquivo executável, facilitando a distribuição.
 * [**Pytest**](https://docs.pytest.org/): Para execução de testes unitários de forma simples, colorida e legível no console.
+* [**Cryptography**](https://cryptography.io/): Para garantir que sua `GEMINI_API_KEY` seja armazenada de forma encriptada e segura no disco.
 
 ----
 
@@ -27,8 +28,7 @@ Se você deseja gerar o seu próprio binário a partir do código-fonte, utiliza
    ```bash
    pipenv run pyinstaller --noconfirm --onefile --name gitpr run.py
    ```
-> **Nota técnica:** A flag `--onefile` garante que todo o Python, bibliotecas e dependências ficam comprimidos 
-> num único binário, enquanto `--paths src` ajuda o compilador a encontrar os nossos arquivos `core.py` e `config.py`. 🛠️
+> **Nota técnica:** A flag `--onefile` garante que todo o Python, bibliotecas e dependências ficam comprimidos num único binário, enquanto `--paths src` ajuda o compilador a encontrar os nossos arquivos `core.py` e `config.py`. 🛠️
 
 Após a execução deste comando, o PyInstaller vai criar algumas pastas (`build` e `dist`). 
 O seu arquivo final e pronto a usar estará dentro da pasta **`dist/`** com o nome `gitpr` (ou `gitpr.exe` no Windows). 
@@ -60,34 +60,30 @@ O Pytest irá detectar automaticamente os arquivos dentro da pasta `tests/` e ap
 2. Mova o executável para uma pasta que esteja no seu PATH (ex: /usr/local/bin no Linux/Mac ou na pasta do seu utilizador no Windows).  
 3. Na primeira execução, o assistente irá guiá-lo:  
    $ gitpr
-
-  ____ _ _   ____  ____  
- / ___(_) |_|  _ \\|  _ \\ 
-| |  _| | __| |_) | |_) |
-| |_| | | |_|  __/|  _ < 
- \\____|_|\\__|_|   |_| \\_\\
-
+```bash
 🚀 Automação Inteligente de PRs com IA
 
-🔧 Primeira execução detetada\! Vamos configurar o GitPR CLI.
+🔧 Primeira execução detetada! Vamos configurar o GitPR CLI.
 
-🔑 Insira sua GEMINI\_API\_KEY:
+🔑 Insira sua GEMINI_API_KEY:
 
-📄 Padrão do nome do arquivo de saída \[{branch}\_{datetime}\_PR\_DESC.md\]:
+📄 Padrão do nome do arquivo de saída [{branch}_{datetime}_PR_DESC.md]:
+```` 
+*Nota: A sua configuração será guardada em segurança no arquivo `~/.gitpr/.env`.*
 
-\*Nota: A sua configuração será guardada em segurança no arquivo \`\~/.gitpr/.env\`.\*
+> **🔒 Nota sobre Segurança:** O GitPR CLI utiliza criptografia simétrica (Fernet). Sua chave de API é armazenada como um hash no arquivo `.env`, e a chave mestra para desencriptação é gerada automaticamente em `~/.gitpr/secret.key`. **Nunca compartilhe seu arquivo secret.key.**
 
-\#\#\# A partir do Código-Fonte
 
-1\. Clone o repositório: \`git clone https://github.com/natanfiuza/gitpr.git\`
+### A partir do Código-Fonte
 
-2\. Entre na pasta: \`cd gitpr\`
+1. Clone o repositório: `git clone https://github.com/natanfiuza/gitpr.git`
 
-3\. Atualize o ambiente (remova o pacote antigo e instale o novo):  
-\`\`\`bash  
-pipenv uninstall google-generativeai  
-pipenv install google-genai python-dotenv click
+2. Entre na pasta: `cd gitpr`
 
+3. Atualize o ambiente:  
+```bash  
+pipenv install google-genai python-dotenv click cryptography
+``` 
 4. Execute: pipenv run python src/main.py
 
 ## **💻 Como Usar**
@@ -96,15 +92,15 @@ Após realizar as suas alterações num repositório Git e ANTES de fazer o comm
 
 gitpr
 
-A ferramenta irá capturar o seu git diff HEAD, processar através da IA e gerar um arquivo Markdown (ex: feature-login\_20260421110134\_PR\_DESC.md) na raiz do seu projeto com a sugestão completa.
+A ferramenta irá capturar o seu git diff HEAD, processar através da IA e gerar um arquivo Markdown (ex: feature-login_20260421110134_PR_DESC.md) na raiz do seu projeto com a sugestão completa.
 
 ## **🤝 Como Contribuir**
 
-Contribuições são muito bem-vindas\! Para contribuir:
+Contribuições são muito bem-vindas! Para contribuir:
 
 1. Faça um Fork do projeto.  
 2. Crie uma branch para a sua *feature* (git checkout \-b feature/NovaFuncionalidade).  
-3. Faça o commit das suas alterações (git commit \-m 'feat: adiciona nova funcionalidade'). Sugestão: Use o próprio GitPR para gerar esta mensagem\! 😄  
+3. Faça o commit das suas alterações (git commit \-m 'feat: adiciona nova funcionalidade'). Sugestão: Use o próprio GitPR para gerar esta mensagem! 😄  
 4. Faça o Push para a branch (git push origin feature/NovaFuncionalidade).  
 5. Abra um Pull Request.
 

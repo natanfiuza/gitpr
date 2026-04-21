@@ -3,6 +3,7 @@ import os
 import json
 from google import genai
 import click
+from src.security import decrypt_data
 
 def get_git_diff():
     """Executa 'git diff HEAD' e retorna a saída."""
@@ -47,6 +48,7 @@ def generate_pr_content(diff_text):
     if not api_key:
         click.secho("❌ GEMINI_API_KEY não encontrada. Apague a pasta ~/.gitpr e rode novamente.", fg="red")
         return None
+    api_key = decrypt_data(api_key)    
     api_model = os.getenv("GEMINI_API_MODEL", "gemini-2.5-flash")
 
     prompt = f"""
