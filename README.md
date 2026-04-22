@@ -26,7 +26,7 @@ Se você deseja gerar o seu próprio binário a partir do código-fonte, utiliza
 
 2. Execute o comando de build apontando para o nosso ponto de entrada (`run.py`):
    ```bash
-   pipenv run pyinstaller --noconfirm --onefile --name gitpr run.py
+   pipenv run pyinstaller --noconfirm --onefile --icon=icon.ico --name gitpr run.py
    ```
 > **Nota técnica:** A flag `--onefile` garante que todo o Python, bibliotecas e dependências ficam comprimidos num único binário, enquanto `--paths src` ajuda o compilador a encontrar os nossos arquivos `core.py` e `config.py`. 🛠️
 

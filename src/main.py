@@ -35,6 +35,7 @@ def cli():
     diff_text = get_git_diff()
     if not diff_text or not diff_text.strip():
         # A mensagem de aviso já é gerida dentro do get_git_diff / core
+        click.secho(f"\n⚠️ Nenhuma alteração de código encontrada para geração de PR.\n", fg="yellow")
         return
 
     # 3. Chama a IA do Gemini para gerar o conteúdo

@@ -1,0 +1,18 @@
+# 🚀 Sugestão de Pull Request
+
+**Commit Message Recomendada:**
+```text
+feat(cli): adicionar feedback visual quando não houver alterações no diff
+```
+
+---
+
+### Resumo
+Este PR introduz um feedback visual explícito na CLI para situações onde não existem alterações rastreadas no `git diff` para a geração do Pull Request.
+
+### Mudanças Técnicas
+- Inclusão da função `click.secho` no escopo do comando de inicialização em `src/main.py`.
+- Adição de um log de aviso em cor amarela (`fg="yellow"`) acionado especificamente quando a avaliação da variável `diff_text` resulta em falso ou vazio.
+
+### Impacto
+Melhora consideravelmente a experiência do usuário (UX) e a usabilidade geral da ferramenta, prevenindo encerramentos silenciosos. Agora o desenvolvedor possui contexto imediato do porquê o fluxo da IA (Gemini) não prosseguiu.
