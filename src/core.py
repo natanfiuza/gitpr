@@ -200,19 +200,19 @@ def get_base_branch():
 
 def get_git_full_diff():
     """Faz o fetch e captura o diff entre a branch principal remota e o estado atual."""
-    click.secho("🔄 Sincronizando com o repositório remoto (git fetch)...", fg="cyan")
-    try:
-        # Atualiza as referências remotas
-        subprocess.run(["git", "fetch", "origin"], check=True, capture_output=True)
-    except subprocess.CalledProcessError:
-        click.secho("⚠️ Aviso: Falha ao fazer fetch (sem internet ou remote inexistente). Usando apenas diff local.", fg="yellow")
-        return get_git_diff() # Fallback amigável
+    # click.secho("🔄 Sincronizando com o repositório remoto (git fetch)...", fg="cyan")
+    # try:
+    #     # Atualiza as referências remotas
+    #     subprocess.run(["git", "fetch", "origin"], check=True, capture_output=True)
+    # except subprocess.CalledProcessError:
+    #     click.secho("⚠️ Aviso: Falha ao fazer fetch (sem internet ou remote inexistente). Usando apenas diff local.", fg="yellow")
+    #     return get_git_diff() # Fallback amigável
 
     base_branch = get_base_branch()
     try:
         # Executa o diff comparando a branch base remota com as alterações locais
         result = subprocess.run(
-            ["git", "diff", f"{base_branch}"], 
+            ["git", "diff", f"origin/{base_branch}...HEAD"], 
             capture_output=True, 
             text=True, 
             encoding="utf-8",
