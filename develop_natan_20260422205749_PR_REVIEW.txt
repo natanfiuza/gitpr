@@ -1,0 +1,41 @@
+### 🔍 Code Review: GitPR CLI
+
+Analisei as alterações com base nas Regras de Negócio, Contexto do Projeto e princípios gerais de Clean Code (SOLID). Seguem os apontamentos e sugestões de melhorias:
+
+#### 🚨 1. Regras de Negócio e Contexto (Idioma)
+**Regra:** Código em inglês, mensagens em português.
+- ❌ **Violação:** No arquivo `src/core.py`, foram criadas variáveis em português em vez de inglês:
+  - `conteudo` (dentro de `get_skill_context`)
+  - `contexto_adicional` (dentro de `generate_pr_content`)
+- 💡 **Sugestão:** Altere para o inglês para respeitar estritamente as regras de nomenclatura do projeto: `content` e `additional_context`.
+- ⚠️ **Consistência de Idioma:** Em `src/main.py` na linha de sucesso de Pull Request Padrão, a mensagem foi alterada para "O ficheiro..." (padrão pt-PT), mas o resto do projeto, inclusive nas linhas abaixo, usa "arquivo" (padrão pt-BR). É ideal manter um único padrão para o usuário final.
+
+#### 🏗️ 2. Clean Code e Princípios SOLID
+- ❌ **SRP (Single Responsibility Principle) - `generate_pr_content` (`src/core.py`):** 
+  A função acumulou responsabilidades demais: gerencia a criptografia da API Key, faz decisões com condicionais de blocos imensos de string (prompts) e também executa a requisição de rede e parser.
+  - 💡 **Sugestão:** Extraia a lógica dos prompts para um método especializado (ex: `_build_prompt(action_type, diff, context)`) e injete o resultado, deixando o `generate_pr_content` responsável apenas pela comunicação com o Gemini e parse da resposta.
+
+- ❌ **SRP - Função `cli` (`src/main.py`):**
+  O handler principal do Click está inflando com toda a lógica de output e I/O de arquivos para as diferentes ações (`commit`, `review`, `pr`).
+  - 💡 **Sugestão:** Desacople o processamento final chamando sub-funções menores, por exemplo: `handle_commit_output(data)`, `save_review_report(...)`, o que deixa o controller inicial mais limpo e legível.
+
+#### 🐛 3. Tratamento de Erros e Risco de Bug
+- ❌ **Crash potencial em `decrypt_data` (`src/core.py`):**
+  ```python
+  api_key_encrypted = os.getenv("GEMINI_API_KEY")
+  api_key = decrypt_data(api_key_encrypted)
+  if not api_key:
+  ```
+  Se o usuário não tiver configurado a variável `GEMINI_API_KEY`, o `os.getenv` retornará `None`. Executar um `decrypt_data(None)` fatalmente ocasionará um `TypeError` sem tratamento antes que o programa chegue à validação `if not api_key:`.
+  - 💡 **Sugestão:** Inverta a ordem. Verifique primeiro se o env existe antes de decifrá-lo:
+  ```python
+  api_key_encrypted = os.getenv("GEMINI_API_KEY")
+  if not api_key_encrypted:
+      click.secho("❌ GEMINI_API_KEY inválida ou não encontrada...", fg="red")
+      return None
+  api_key = decrypt_data(api_key_encrypted)
+  ```
+
+#### 🔧 4. Melhorias Gerais
+- ⚠️ **Fallback Silencioso (`get_base_branch`):** 
+  Retornar `"main"` de forma fixada na exceção (quando o branch remoto falha em ser detectado) pode induzir erros em repositórios baseados em `master`. Considere emitir um aviso via `click.secho` de que o sistema não encontrou a ramificação e assumiu `main` como fallback padrão.

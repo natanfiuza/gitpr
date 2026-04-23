@@ -17,3 +17,8 @@ Esta PR traz melhorias para a experiência do usuário (UX) e para o empacotamen
 ### Impacto
 - **Feedback de CLI**: Os usuários agora entenderão imediatamente por que a geração do PR foi interrompida caso não tenham feito commit ou stage das mudanças.
 - **Visual do Binário**: O executável standalone será gerado com uma identidade visual própria (`icon.ico`), garantindo um aspecto mais polido e profissional à ferramenta.
+
+sr/config.py
+src/core.py
+src/main.py
+src/security.py

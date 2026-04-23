@@ -30,11 +30,24 @@ def setup_environment():
             "📄 Padrão do nome do arquivo de saída", 
             default=default_filename
         )
-        
+        # Padrões para Review e Full Review
+        default_review_pattern = "{branch}_{datetime}_PR_REVIEW.txt"
+        output_review = click.prompt(
+            "📄 Padrão do nome do arquivo de REVIEW", 
+            default=default_review_pattern
+        )
+
+        default_full_pattern = "{branch}_{datetime}_PR_FULLREVIEW.txt"
+        output_full = click.prompt(
+            "📄 Padrão do nome do arquivo de FULL REVIEW", 
+            default=default_full_pattern
+        )
         with open(env_file, "w", encoding="utf-8") as f:
             f.write(f"GEMINI_API_KEY={encrypt_data(api_key)}\n")
             f.write(f"GEMINI_API_MODEL={api_model}\n")
             f.write(f"OUTPUT_FILE_NAME={output_filename}\n")
+            f.write(f"OUTPUT_FILE_NAME_REVIEW={output_review}\n") 
+            f.write(f"OUTPUT_FILE_NAME_FULLREVIEW={output_full}\n")
             
         click.secho(f"✅ Configuração salva em: {env_file}\n", fg="green")
 
