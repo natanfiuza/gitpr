@@ -4,6 +4,7 @@ import json
 from google import genai
 import click
 from src.security import decrypt_data
+from src.cache import get_cached_response, save_cached_response
 
 def get_git_diff():
     """Executa 'git diff HEAD' e retorna a saída."""
@@ -60,7 +61,15 @@ def generate_pr_content(diff_text, action_type="pr", skill_context=""):
     if not diff_text or not diff_text.strip():
         click.secho("⚠️ Nenhum diff encontrado. Faça alguma alteração antes de rodar o comando.", fg="yellow")
         return None
-
+    # Determina a pasta de cache baseada na ação
+    # Mapea as ações para as pastas solicitadas
+    action_folder_map = {
+        "pr": "pr_desc",
+        "commit": "commit",
+        "review": "review",
+        "fullreview": "review"
+    }
+    action_folder = action_folder_map.get(action_type, "misc")
     # Lê o valor encriptado do ambiente e desencripta na hora
     api_key_encrypted = os.getenv("GEMINI_API_KEY")
     if not api_key_encrypted:
@@ -115,6 +124,11 @@ def generate_pr_content(diff_text, action_type="pr", skill_context=""):
         Retorne APENAS um JSON válido, sem blocos de código Markdown (` ```json `) em volta.
         Diff:\n{diff_text}
         """
+    # TENTA RECUPERAR DO CACHE ANTES DA API
+    cached_data = get_cached_response(action_folder, prompt)
+    if cached_data:
+        click.secho("⚡ Resposta recuperada do cache local.", fg="green", dim=True)
+        return cached_data
 
     try:
         click.secho("🤖 O GitPR está analisando o seu código...\n", fg="cyan")
@@ -129,7 +143,12 @@ def generate_pr_content(diff_text, action_type="pr", skill_context=""):
             }
         )
         
-        return json.loads(response.text)
+        result_json = json.loads(response.text)
+
+        # 4. SALVA NO CACHE PARA USO FUTURO
+        save_cached_response(action_folder, action_type, prompt, result_json)
+
+        return result_json
     except Exception as e:
         click.secho(f"❌ Erro ao contactar a API do Gemini: {str(e)}", fg="red")
         return None

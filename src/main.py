@@ -92,7 +92,7 @@ def cli(commit, review, fullreview, skill,update):
         action_type = "review"
         diff_text = get_git_diff()
     elif fullreview:
-        action_type = "review" # Usamos o prompt de review
+        action_type = "fullreview" 
         diff_text = get_git_full_diff()
     else:
         # Padrão: Descrição de PR usando o Full Diff contra a main remota
@@ -103,7 +103,7 @@ def cli(commit, review, fullreview, skill,update):
     if not diff_text or not diff_text.strip():
         click.secho("\n⚠️ Nenhum código novo encontrado. Faça alguma alteração ou verifique sua branch antes de rodar o comando.\n", fg="yellow")
         return
-        
+
     # Busca o contexto do arquivo .gitpr.md (se existir)
     skill_context = get_skill_context()
 
