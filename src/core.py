@@ -135,14 +135,13 @@ def generate_pr_content(diff_text, action_type="pr", skill_context=""):
         return None
 
 def generate_skill_template():
-    """Gera o arquivo de template .gitpr.md na raiz do projeto."""
+    """Gera os arquivos de template .gitpr.md e .gitpr.linter.yml na raiz do projeto."""
     skill_file = os.path.join(os.getcwd(), ".gitpr.md")
+    linter_file = os.path.join(os.getcwd(), ".gitpr.linter.yml")
     
-    if os.path.exists(skill_file):
-        click.secho("⚠️ O arquivo .gitpr.md já existe neste diretório. Edite-o diretamente.", fg="yellow")
-        return False
-
-    template = """# Contexto do Projeto (GitPR Skill)
+    # Gera o arquivo MD (Contexto para IA)
+    if not os.path.exists(skill_file):
+        template_md = """# Contexto do Projeto (GitPR Skill)
 
 ## 🎯 Sobre o Projeto
 Este é um sistema de [descreva o sistema]. Ele é focado em [objetivo principal].
@@ -156,14 +155,34 @@ Este é um sistema de [descreva o sistema]. Ele é focado em [objetivo principal
 2. **Tipagem**: Uso de Type Hints é obrigatório.
 3. **Idioma**: Código em inglês, mensagens em português.
 """
-    try:
         with open(skill_file, "w", encoding="utf-8") as f:
-            f.write(template)
-        click.secho("✅ Arquivo .gitpr.md gerado com sucesso! Edite-o com as regras do seu projeto.", fg="green")
-        return True
-    except Exception as e:
-        click.secho(f"❌ Erro ao gerar o arquivo de skill: {e}", fg="red")
-        return False
+            f.write(template_md)
+        click.secho("✅ Arquivo .gitpr.md gerado com sucesso!", fg="green")
+
+    # Gera o arquivo YAML (Linter Estático)
+    if not os.path.exists(linter_file):
+        template_yaml = """rules:
+  - name: "check-console-log"
+    extensions: ["js"]
+    regex: 'console\.log'
+    message: "🚨 'console.log' encontrado no arquivo {file_name} (Linha {line_number})"
+    ignore_comments: true
+    ignore_paths:
+      - "app/js/plugin/multiselect/*"
+      - "js/axios/*"
+      - "*/Arquivos_HighCharts/*"
+      - "*jquery*.js"
+      - "*moment.js"
+
+  - name: "check-localhost"
+    extensions: ["js"]
+    regex: 'http(s)?://(localhost|127\.0\.0\.1)'
+    message: "🚨 Uso de 'localhost' detectado na linha {line_number} do arquivo {file_name}"
+    ignore_comments: true
+"""
+        with open(linter_file, "w", encoding="utf-8") as f:
+            f.write(template_yaml)
+        click.secho("✅ Arquivo .gitpr.linter.yml gerado com sucesso!", fg="green")
 
 def get_base_branch():
     """Descobre a branch principal remota (ex: main ou master)."""
