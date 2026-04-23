@@ -212,7 +212,7 @@ def get_git_full_diff():
     try:
         # Executa o diff comparando a branch base remota com as alterações locais
         result = subprocess.run(
-            ["git", "diff", f"origin/{base_branch}"], 
+            ["git", "diff", f"{base_branch}"], 
             capture_output=True, 
             text=True, 
             encoding="utf-8",

@@ -44,13 +44,23 @@ def parse_diff_and_lint(diff_text, linter_file_path=".gitpr.linter.yml"):
             
             for rule in rules:
 
-                #1. Filtro de Extensão
+                # Filtro de Extensão
                 exts = rule.get('extensions', [])
                 file_ext = current_file.split('.')[-1] if '.' in current_file else ''
                 if exts and file_ext not in exts:
                     continue
-                    
-                # 2. Filtro de Arquivos/Paths Ignorados (Substitui o -not -path do Linux)
+                # Filtro de Caminhos Obrigatórios (Novo)
+                require_paths = rule.get('require_paths', [])
+                if require_paths:
+                    is_in_required_path = False
+                    for path_pattern in require_paths:
+                        if fnmatch.fnmatch(current_file, path_pattern) or fnmatch.fnmatch(current_file, f"*/{path_pattern}"):
+                            is_in_required_path = True
+                            break
+                    if not is_in_required_path:
+                        continue
+
+                # Filtro de Arquivos/Paths Ignorados (Substitui o -not -path do Linux)
                 ignore_paths = rule.get('ignore_paths', [])
                 ignored = False
                 for path_pattern in ignore_paths:
@@ -61,13 +71,13 @@ def parse_diff_and_lint(diff_text, linter_file_path=".gitpr.linter.yml"):
                 if ignored:
                     continue
                     
-                # 3. Filtro de Comentários
+                # Filtro de Comentários
                 if rule.get('ignore_comments', False):
                     # Ignora se começar com barras duplas, asterisco, /* ou #
                     if stripped_code.startswith('//') or stripped_code.startswith('/*') or stripped_code.startswith('*') or stripped_code.startswith('#'):
                         continue
                         
-                # 4. Avaliação da Expressão Regular
+                # Avaliação da Expressão Regular
                 pattern = rule.get('regex', '')
                 if pattern and re.search(pattern, actual_code):
                     msg_template = rule.get('message', "🚨 Violação de regra na linha {line_number} do arquivo {file_name}")

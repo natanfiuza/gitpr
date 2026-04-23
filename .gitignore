@@ -16,3 +16,6 @@ dist/
 
 # MacOS
 .DS_Store
+
+
+*.log
