@@ -200,25 +200,31 @@ def get_base_branch():
 
 def get_git_full_diff():
     """Faz o fetch e captura o diff entre a branch principal remota e o estado atual."""
-    # click.secho("🔄 Sincronizando com o repositório remoto (git fetch)...", fg="cyan")
-    # try:
-    #     # Atualiza as referências remotas
-    #     subprocess.run(["git", "fetch", "origin"], check=True, capture_output=True)
-    # except subprocess.CalledProcessError:
-    #     click.secho("⚠️ Aviso: Falha ao fazer fetch (sem internet ou remote inexistente). Usando apenas diff local.", fg="yellow")
-    #     return get_git_diff() # Fallback amigável
-
-    base_branch = get_base_branch()
+    click.secho("🔄 Sincronizando com o repositório remoto (git fetch)...", fg="cyan")
     try:
-        # Executa o diff comparando a branch base remota com as alterações locais
+        # 1. Faz o fetch para garantir que sabemos onde a origin/main está
+        subprocess.run(["git", "fetch", "origin"], check=True, capture_output=True)
+        
+        base_branch = get_base_branch()
+        
+        # 2. Encontra o HASH do commit onde a sua branch nasceu (o ancestral comum)
+        merge_base_res = subprocess.run(
+            ["git", "merge-base", f"origin/{base_branch}", "HEAD"],
+            capture_output=True, text=True, check=True
+        )
+        ancestor_hash = merge_base_res.stdout.strip()
+
+        # 3. Faz o diff entre esse HASH e o seu WORKSPACE ATUAL (sem usar HEAD)
+        # Ao passar apenas o hash, o Git compara esse commit com os arquivos no seu disco.
         result = subprocess.run(
-            ["git", "diff", f"origin/{base_branch}...HEAD"], 
+            ["git", "diff", ancestor_hash], 
             capture_output=True, 
             text=True, 
             encoding="utf-8",
             check=True
         )
         return result.stdout
+        
     except subprocess.CalledProcessError as e:
-        click.secho(f"❌ Erro ao executar o Git Full Diff: {e.stderr}", fg="red")
+        click.secho(f"❌ Erro ao calcular o diff: {e.stderr}", fg="red")
         return None

@@ -1,4 +1,6 @@
 import os
+import sys
+import socket
 from pathlib import Path
 import click
 from dotenv import load_dotenv
@@ -53,3 +55,23 @@ def setup_environment():
 
     # Carrega as variáveis de ambiente do arquivo
     load_dotenv(env_file)
+
+def check_internet_connection(timeout=2):
+    """Verifica se há conexão com a internet tentando conectar a um DNS global."""
+    try:
+        # Salva o timeout padrão do sistema
+        original_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(timeout)
+        
+        # Conecta e fecha o socket automaticamente usando 'with'
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect(("8.8.8.8", 53))
+            
+        # CRÍTICO: Restaura o timeout para não quebrar a API do Gemini!
+        socket.setdefaulttimeout(original_timeout)
+        return True
+    except socket.error:
+        click.secho("\n❌ Erro: Sem conexão com a internet.", fg="red", bold=True)
+        click.secho("O GitPR precisa de acesso à rede para consultar a IA e verificar atualizações.", fg="yellow")
+        click.secho("Verifique sua conexão e tente novamente.\n", fg="white")
+        sys.exit(1)
