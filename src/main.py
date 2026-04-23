@@ -12,6 +12,9 @@ from src.core import (
     get_skill_context,
     generate_skill_template
 )
+from src.linter_engine import parse_diff_and_lint
+
+
 def print_banner():
     """Exibe a assinatura ASCII Art do projeto"""
     banner = """
@@ -109,6 +112,24 @@ def cli(commit, review, fullreview, skill):
             datetime=current_time
         )
         content = data.get('review', 'Nenhuma análise gerada.')
+        
+        linter_alerts = parse_diff_and_lint(diff_text)
+        
+        if linter_alerts:
+            
+            click.secho(f"⚠️ Atenção! Encontrados {len(linter_alerts)} alertas nas regras do Linter.", fg="yellow")
+            
+            # Monta o cabeçalho com os erros do linter
+            linter_header = "## 🚨 Alertas de Análise Estática Local (Regras YAML)\n\n"
+            for alert in linter_alerts:
+                linter_header += f"- {alert}\n"
+            linter_header += "\n---\n\n## 🤖 Code Review da IA\n\n"
+            
+            # Injeta o cabeçalho no topo do conteúdo gerado pela IA
+            content = linter_header + content
+        else:
+            click.secho("✅ Linter Local passou sem violações de regras!", fg="green")
+
         try:
             with open(output_filename, "w", encoding="utf-8") as f:
                 f.write(content)

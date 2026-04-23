@@ -8,6 +8,7 @@ python-dotenv = "*"
 click = "*"
 google-genai = "*"
 cryptography = "*"
+pyyaml = "*"
 
 [dev-packages]
 pyinstaller = "*"
