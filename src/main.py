@@ -1,9 +1,11 @@
 import os
 from datetime import datetime
 import click
+import sys
 
 # Importações dos nossos módulos internos atualizadas
-from src.config import setup_environment
+from src.config import setup_environment, check_internet_connection
+from src.updater import check_and_update, __version__
 from src.core import (
     get_git_diff, 
     get_git_full_diff,
@@ -29,8 +31,8 @@ def print_banner():
                                              ███    ███ 
     """
     click.secho(banner, fg="cyan", bold=True)
-    click.secho("  🚀 Automação Inteligente de PRs com IA", fg="yellow", bold=True)
-    click.secho("  Opções: --commit | --review | --fullreview | --skill | -h ou --help\n", fg="white", dim=True)
+    click.secho(f"  🚀 Automação Inteligente de PRs com IA (v{__version__})", fg="yellow", bold=True)
+    click.secho("  Opções: --commit | --review | --fullreview | --skill | --update | -h ou --help\n", fg="white", dim=True)
 
 # Configuração nativa do Click para aceitar -h além de --help
 @click.command()
@@ -39,25 +41,47 @@ def print_banner():
 @click.option('--review', is_flag=True, help="Faz um code review das alterações locais (git diff).")
 @click.option('--fullreview', is_flag=True, help="Faz um code review de todas as alterações desde a branch principal (origin/main).")
 @click.option('--skill', is_flag=True, help="Gera o arquivo de template .gitpr.md na pasta atual.")
-def cli(commit, review, fullreview, skill):
+@click.option('--update', is_flag=True, help="Verifica e instala a versão mais recente do GitPR.")
+def cli(commit, review, fullreview, skill,update):
     """
     GitPR CLI - Automação de PRs e Code Review com IA.
 
     COMPORTAMENTO PADRÃO (Sem opções):
     Faz o fetch, compara com a branch principal remota e gera um arquivo Markdown (.md) com a descrição completa para o Pull Request.
     """
-    # 0. Exibe o banner
+    # Exibe o banner
     print_banner()
+
+    # Guardião de Conexão (Failing Fast)
+    check_internet_connection()
+
+    # Limpeza do Hot-Swap (Deleta o .old se existir)
+    if getattr(sys, 'frozen', False):
+        old_exe = sys.executable + ".old"
+        if os.path.exists(old_exe):
+            try:
+                os.remove(old_exe)
+            except OSError:
+                pass # Falha silenciosamente se o Windows ainda estiver segurando o arquivo
+
+    # 3. Módulo de Atualização
+    if update:
+        click.secho("🔍 Verificando atualizações no GitHub...", fg="cyan")
+        check_and_update()
+        return # Encerra após a verificação manual
+    else:
+        # Verificação automática em segundo plano a cada uso
+        check_and_update()
 
     # Opção --skill: Gera o template e encerra
     if skill:
         generate_skill_template()
         return
 
-    # 1. Garante que o ambiente e as chaves estão configurados
+    # Garante que o ambiente e as chaves estão configurados
     setup_environment()
 
-    # 2. Determina o tipo de ação e qual diff capturar
+    # Determina o tipo de ação e qual diff capturar
     action_type = "pr"
     diff_text = ""
     
@@ -74,10 +98,12 @@ def cli(commit, review, fullreview, skill):
         # Padrão: Descrição de PR usando o Full Diff contra a main remota
         action_type = "pr"
         diff_text = get_git_full_diff()
-
+   
+    # CRÍTICO: Avisa o usuário antes de sair se não houver alterações
     if not diff_text or not diff_text.strip():
+        click.secho("\n⚠️ Nenhum código novo encontrado. Faça alguma alteração ou verifique sua branch antes de rodar o comando.\n", fg="yellow")
         return
-
+        
     # Busca o contexto do arquivo .gitpr.md (se existir)
     skill_context = get_skill_context()
 
