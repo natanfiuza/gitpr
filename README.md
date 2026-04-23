@@ -88,11 +88,23 @@ pipenv install google-genai python-dotenv click cryptography
 
 ## **💻 Como Usar**
 
-Após realizar as suas alterações num repositório Git e ANTES de fazer o commit, basta executar:
+O GitPR possui um comportamento padrão poderoso e diversas opções avançadas para auxiliar no seu dia a dia como desenvolvedor.
 
+### **Comportamento Padrão (Pull Request)**
+Basta executar o comando puro no seu terminal:
+```bash
 gitpr
+```
+A ferramenta irá sincronizar com o remoto (`git fetch`), comparar as suas alterações com a branch principal remota (ex: `origin/main`), e gerar um arquivo Markdown (ex: `feature-login_20260421110134_PR_DESC.md`) na raiz do seu projeto com a sugestão completa para o seu Pull Request.
 
-A ferramenta irá capturar o seu git diff HEAD, processar através da IA e gerar um arquivo Markdown (ex: feature-login_20260421110134_PR_DESC.md) na raiz do seu projeto com a sugestão completa.
+### **Opções e Comandos Avançados**
+Você pode passar as seguintes *flags* para ações específicas:
+
+* `gitpr --commit`: Executa um `git diff` local e exibe **apenas a mensagem de commit** sugerida diretamente no console, sem gerar arquivos. Ótimo para commits rápidos!
+* `gitpr --review`: Realiza um **Code Review** detalhado das suas alterações locais que ainda não foram commitadas, gerando um arquivo `.txt` com análises de melhoria.
+* `gitpr --fullreview`: Realiza um **Code Review completo**, analisando todas as alterações desde a branch principal remota (`git diff origin/main`), gerando também um arquivo `.txt`.
+* `gitpr --skill`: Cria um arquivo de template chamado **`.gitpr.md`** na raiz do projeto. Você pode editar este arquivo com a Arquitetura, Regras de Negócio e padrões de Clean Code do seu repositório. **Dica de Ouro:** Sempre que o GitPR for executado, ele lerá este arquivo e moldará o Code Review e o Pull Request especificamente para o contexto da sua equipe! 🧠
+* `gitpr -h` ou `gitpr --help`: Exibe o menu de ajuda com a lista rápida de todos os comandos diretamente no terminal.
 
 ## **🤝 Como Contribuir**
 

@@ -27,15 +27,22 @@ def print_banner():
     """
     click.secho(banner, fg="cyan", bold=True)
     click.secho("  🚀 Automação Inteligente de PRs com IA", fg="yellow", bold=True)
-    click.secho("  Opções: --commit | --review | --fullreview | --skill\n", fg="white", dim=True)
+    click.secho("  Opções: --commit | --review | --fullreview | --skill | -h ou --help\n", fg="white", dim=True)
 
+# Configuração nativa do Click para aceitar -h além de --help
 @click.command()
+@click.help_option('-h', '--help', help='Mostra esta mensagem e sai.')
 @click.option('--commit', is_flag=True, help="Gera apenas a mensagem de commit e exibe no console.")
-@click.option('--review', is_flag=True, help="Faz um code review das alterações locais.")
-@click.option('--fullreview', is_flag=True, help="Faz um code review de todas as alterações desde a branch principal.")
+@click.option('--review', is_flag=True, help="Faz um code review das alterações locais (git diff).")
+@click.option('--fullreview', is_flag=True, help="Faz um code review de todas as alterações desde a branch principal (origin/main).")
 @click.option('--skill', is_flag=True, help="Gera o arquivo de template .gitpr.md na pasta atual.")
 def cli(commit, review, fullreview, skill):
-    """GitPR CLI - Automação de PRs e Code Review com IA."""
+    """
+    GitPR CLI - Automação de PRs e Code Review com IA.
+
+    COMPORTAMENTO PADRÃO (Sem opções):
+    Faz o fetch, compara com a branch principal remota e gera um arquivo Markdown (.md) com a descrição completa para o Pull Request.
+    """
     # 0. Exibe o banner
     print_banner()
 
