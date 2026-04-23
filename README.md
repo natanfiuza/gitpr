@@ -12,6 +12,7 @@ Este projeto foi desenvolvido em Python e utiliza as seguintes bibliotecas princ
 * [**PyInstaller**](https://pyinstaller.org/): Para empacotar o projeto num único arquivo executável, facilitando a distribuição.
 * [**Pytest**](https://docs.pytest.org/): Para execução de testes unitários de forma simples, colorida e legível no console.
 * [**Cryptography**](https://cryptography.io/): Para garantir que sua `GEMINI_API_KEY` seja armazenada de forma encriptada e segura no disco.
+* [**PyYAML**](https://pyyaml.org/): Utilizado para ler e processar as regras customizadas de análise estática do arquivo `.gitpr.linter.yml`.
 
 ----
 
@@ -103,8 +104,30 @@ Você pode passar as seguintes *flags* para ações específicas:
 * `gitpr --commit`: Executa um `git diff` local e exibe **apenas a mensagem de commit** sugerida diretamente no console, sem gerar arquivos. Ótimo para commits rápidos!
 * `gitpr --review`: Realiza um **Code Review** detalhado das suas alterações locais que ainda não foram commitadas, gerando um arquivo `.txt` com análises de melhoria.
 * `gitpr --fullreview`: Realiza um **Code Review completo**, analisando todas as alterações desde a branch principal remota (`git diff origin/main`), gerando também um arquivo `.txt`.
-* `gitpr --skill`: Cria um arquivo de template chamado **`.gitpr.md`** na raiz do projeto. Você pode editar este arquivo com a Arquitetura, Regras de Negócio e padrões de Clean Code do seu repositório. **Dica de Ouro:** Sempre que o GitPR for executado, ele lerá este arquivo e moldará o Code Review e o Pull Request especificamente para o contexto da sua equipe! 🧠
+* `gitpr --skill`: Cria um arquivo de template chamado **`.gitpr.md`** (contexto para IA) na raiz do projeto. Você pode editar este arquivo com a Arquitetura, Regras de Negócio e padrões de Clean Code do seu repositório. **Dica de Ouro:** Sempre que o GitPR for executado, ele lerá este arquivo e moldará o Code Review e o Pull Request especificamente para o contexto da sua equipe! 🧠 e **`.gitpr.linter.yml`** (regras de linter) na raiz do projeto.
 * `gitpr -h` ou `gitpr --help`: Exibe o menu de ajuda com a lista rápida de todos os comandos diretamente no terminal.
+
+## 🛡️ Linter Local (Análise Estática)
+
+O GitPR CLI permite que você defina regras rígidas que serão validadas instantaneamente durante o `--review` ou `--fullreview`, sem depender da IA. Isso é ideal para evitar que erros comuns (como `console.log` ou IPs de teste) cheguem ao repositório.
+
+### Como configurar o `.gitpr.linter.yml`:
+Ao rodar `gitpr --skill`, um modelo será gerado. Você pode configurar regras usando Expressões Regulares (Regex):
+
+```yaml
+rules:
+  - name: "check-localhost"
+    extensions: ["js", "php"] # Extensões que serão validadas
+    regex: 'http(s)?://(localhost|127\.0\.0\.1)' # O que procurar
+    message: "🚨 Uso de localhost detectado no arquivo {file_name}"
+    ignore_comments: true # Ignora se a linha estiver comentada
+    ignore_paths: # Pastas ou arquivos ignorados (aceita *)
+      - "vendor/*"
+      - "node_modules/*"
+```
+
+O Linter analisa apenas as **linhas adicionadas** no seu `git diff`, garantindo uma execução focada e extremamente rápida. Se houver violações, elas aparecerão com destaque no topo do seu arquivo de revisão.
+
 
 ## **🤝 Como Contribuir**
 
