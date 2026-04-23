@@ -1,0 +1,23 @@
+# 🚀 Sugestão de Pull Request
+
+**Commit Message Recomendada:**
+```text
+feat: adicionar comandos para code review, commit rápido e contexto customizado
+```
+
+---
+
+### Resumo
+Este PR introduz um conjunto significativo de novas funcionalidades para a CLI do GitPR. Foram incluídos comandos dedicados para a geração de mensagens de commit diretas, execução de revisões de código locais ou completas contra a branch principal remota e suporte à injeção de contextos personalizados por meio do arquivo `.gitpr.md` (Skills). Além disso, foram feitas melhorias no build e na configuração de nomes de arquivos gerados.
+
+### Mudanças Técnicas
+- **Build (`README.md`)**: Inclusão da flag `--icon=icon.ico` no comando do `pyinstaller` para atribuição do ícone ao executável gerado.
+- **Configurações (`src/config.py`)**: Adicionados novos prompts para definir o padrão de nome de arquivos de saída para `REVIEW` e `FULL REVIEW` e salvá-los no arquivo `.env`.
+- **Lógica Central (`src/core.py`)**:
+  - Implementação das funções `get_skill_context` e `generate_skill_template` para lidar com as regras de projeto via `.gitpr.md`.
+  - Adição de `get_base_branch` e `get_git_full_diff` para comparar eficientemente as mudanças locais contra a branch principal do repositório remoto.
+  - Refatoração profunda em `generate_pr_content`, que agora recebe parâmetros de `action_type` e constrói prompts direcionados para o modelo de IA do Gemini.
+- **CLI (`src/main.py`)**: Inclusão de novas opções no comando principal (`--commit`, `--review`, `--fullreview` e `--skill`) com os devidos roteamentos baseados na ação requisitada pelo usuário.
+
+### Impacto
+O GitPR torna-se uma ferramenta muito mais robusta e versátil no fluxo de desenvolvimento. Ele não só gera PRs completas considerando as diferenças exatas com a main remota, mas também atua como um revisor de código restrito às próprias regras de negócio do projeto, proporcionando feedback de alta qualidade para a equipe.
