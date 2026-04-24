@@ -25,6 +25,7 @@ def get_git_diff():
         click.secho("❌ Git não encontrado. Certifique-se de que está instalado e no PATH.", fg="red")
         return None
 
+
 def get_current_branch():
     """Retorna o nome da branch atual."""
     try:
@@ -38,6 +39,7 @@ def get_current_branch():
         return result.stdout.strip()
     except subprocess.CalledProcessError:
         return "main" # Fallback
+
 
 def get_skill_context():
     """Lê o arquivo de contexto .gitpr.md se existir no diretório atual."""
@@ -56,13 +58,14 @@ def get_skill_context():
     # Retorna vazio se não existir, para a IA usar o conhecimento padrão
     return ""
 
+
 def generate_pr_content(diff_text, action_type="pr", skill_context=""):
-    """Envia o diff e o contexto para o Gemini e retorna um JSON parseado de acordo com a ação."""
+    """Envia o diff para o Gemini usando System Instruction e retorna um JSON parseado."""
     if not diff_text or not diff_text.strip():
         click.secho("⚠️ Nenhum diff encontrado. Faça alguma alteração antes de rodar o comando.", fg="yellow")
         return None
-    # Determina a pasta de cache baseada na ação
-    # Mapea as ações para as pastas solicitadas
+
+    # Configuração de pastas para o Cache
     action_folder_map = {
         "pr": "pr_desc",
         "commit": "commit",
@@ -70,85 +73,65 @@ def generate_pr_content(diff_text, action_type="pr", skill_context=""):
         "fullreview": "review"
     }
     action_folder = action_folder_map.get(action_type, "misc")
-    # Lê o valor encriptado do ambiente e desencripta na hora
+
+    # Preparação das Chaves e Modelo
     api_key_encrypted = os.getenv("GEMINI_API_KEY")
     if not api_key_encrypted:
-      click.secho("❌ GEMINI_API_KEY inválida ou não encontrada...", fg="red")
-      return None    
+        click.secho("❌ GEMINI_API_KEY não encontrada.", fg="red")
+        return None    
+    
     api_key = decrypt_data(api_key_encrypted)
+    if not api_key:
+        click.secho("❌ Falha ao descriptografar a GEMINI_API_KEY. Apague a pasta ~/.gitpr e reconfigure.", fg="red")
+        return None
     api_model = os.getenv("GEMINI_API_MODEL", "gemini-2.5-flash")
 
-    if not api_key:
-        click.secho("❌ GEMINI_API_KEY inválida ou não encontrada. Apague a pasta ~/.gitpr e reconfigure.", fg="red")
-        return None
+    # Definição da Instrução de Sistema (Persona e Regras)
+    # Se houver skill_context, ele vira a regra mestre do sistema.
+    instrucao_sistema = skill_context if skill_context else "Atue como um Desenvolvedor Sênior e Revisor de Código exigente."
 
-    # Prepara o bloco de contexto caso o arquivo .gitpr.md exista
-    contexto_adicional = f"\n\nRegras de Negócio e Contexto do Projeto:\n{skill_context}" if skill_context else ""
-
-    # Construção dinâmica do Prompt baseada na ação solicitada
+    # Construção dos Prompts curtos (forçando o formato de Objeto)
     if action_type == "commit":
-        prompt = f"""
-        Atue como um Desenvolvedor Sênior. Analise o seguinte `git diff` anexo.
-        {contexto_adicional}
-        
-        Gere um JSON estrito contendo apenas uma chave:
-        1. "commit_message": Uma única frase curta e precisa seguindo o padrão Conventional Commits (ex: feat:, fix:, refactor:).
-    
-        Retorne APENAS um JSON válido, sem blocos de código Markdown (` ```json `) em volta.
-        Diff:\n{diff_text}
-        """
-    elif action_type == "review":
-        prompt = f"""
-        Atue como um Desenvolvedor Sênior e Revisor de Código exigente. Analise o seguinte `git diff` anexo.
-        {contexto_adicional}
-        
-        Faça um Code Review focado estritamente nas "Regras de Negócio e Contexto do Projeto" fornecidas acima.
-        Se não houver regras específicas, use boas práticas gerais de Clean Code e princípios SOLID.
-        
-        Aponte o que NÃO está de acordo com as diretrizes e sugira melhorias reais.
-        Gere um JSON estrito contendo apenas uma chave:
-        1. "review": Um texto em Markdown contendo a análise completa do code review.
-        
-        Retorne APENAS um JSON válido, sem blocos de código Markdown (` ```json `) em volta.
-        Diff:\n{diff_text}
-        """
-    else: # Padrão: "pr"
-        prompt = f"""
-        Atue como um Desenvolvedor Sênior. Analise o seguinte `git diff` anexo.
-        {contexto_adicional}
-        
-        Gere um JSON estrito contendo duas chaves:
-        1. "commit_message": Uma frase curta seguindo o padrão Conventional Commits (ex: feat:, fix:, refactor:).
-        2. "pr_description": Uma descrição de PR em Markdown contendo 'Resumo', 'Mudanças Técnicas' (bullet points) e 'Impacto'. Considere o contexto do projeto fornecido, se houver.
-        
-        Retorne APENAS um JSON válido, sem blocos de código Markdown (` ```json `) em volta.
-        Diff:\n{diff_text}
-        """
-    # TENTA RECUPERAR DO CACHE ANTES DA API
+        prompt = f"Gere APENAS um objeto JSON no formato {{\"commit_message\": \"...\"}} para este diff:\n{diff_text}"
+    elif action_type == "review" or action_type == "fullreview":
+        prompt = f"Gere APENAS um objeto JSON no formato {{\"review\": \"...\"}} apontando erros e melhorias para este diff:\n{diff_text}"
+    else: # pr
+        prompt = f"Gere APENAS um objeto JSON no formato {{\"commit_message\": \"...\", \"pr_description\": \"...\"}} para este diff:\n{diff_text}"
+
+    # TENTA RECUPERAR DO CACHE
     cached_data = get_cached_response(action_folder, prompt)
     if cached_data:
         click.secho("⚡ Resposta recuperada do cache local.", fg="green", dim=True)
         return cached_data
 
+    # CHAMADA À API COM CONFIGURAÇÃO DETERMINÍSTICA
     try:
         click.secho("🤖 O GitPR está analisando o seu código...\n", fg="cyan")
-        
         client = genai.Client(api_key=api_key)
         
         response = client.models.generate_content(
             model=api_model,
             contents=prompt,
             config={
-                "response_mime_type": "application/json"
+                "system_instruction": instrucao_sistema,
+                "response_mime_type": "application/json",
+                "temperature": 0.0,
+                "top_p": 0.1,
+                "top_k": 1
             }
         )
         
         result_json = json.loads(response.text)
 
-        # 4. SALVA NO CACHE PARA USO FUTURO
+        # Se a IA retornar uma lista [ { ... } ], pega o primeiro objeto
+        if isinstance(result_json, list):
+            result_json = result_json[0] if result_json else {}
+
+        # SALVA NO CACHE
         save_cached_response(action_folder, action_type, prompt, result_json)
 
         return result_json
+
     except Exception as e:
         click.secho(f"❌ Erro ao contactar a API do Gemini: {str(e)}", fg="red")
         return None
