@@ -20,29 +20,26 @@ from src.linter_engine import parse_diff_and_lint
 def print_banner():
     """Exibe a assinatura ASCII Art do projeto"""
     banner = """
-   ▄██████▄   ▄█      ███        ▄███████▄    ▄████████ 
-  ███    ███ ███  ▀█████████▄   ███    ███   ███    ███ 
-  ███    █▀  ███▌    ▀███▀▀██   ███    ███   ███    ███ 
- ▄███        ███▌     ███   ▀   ███    ███  ▄███▄▄▄▄██▀ 
-▀▀███ ████▄  ███▌     ███     ▀█████████▀  ▀▀███▀▀▀▀▀   
-  ███    ███ ███      ███       ███        ▀███████████ 
-  ███    ███ ███      ███       ███          ███    ███ 
-  ████████▀  █▀      ▄████▀    ▄████▀        ███    ███ 
-                                             ███    ███ 
-    """
+ ,----.   ,--.  ,--.  ,------. ,------.  
+'  .-./   `--',-'  '-.|  .--. '|  .--. ' 
+|  | .---.,--.'-.  .-'|  '--' ||  '--'.' 
+'  '--'  ||  |  |  |  |  | --' |  |\  \  
+ `------' `--'  `--'  `--'     `--' '--' 
+                                         
+"""
     click.secho(banner, fg="cyan", bold=True)
     click.secho(f"  🚀 Automação Inteligente de PRs com IA (v{__version__})", fg="yellow", bold=True)
-    click.secho("  Opções: --commit | --review | --fullreview | --skill | --update | -h ou --help\n", fg="white", dim=True)
+    click.secho("  Opções: -c,--commit | -r,--review | -f,--fullreview | -s,--skill | -u,--update | -h ou --help\n", fg="white", dim=True)
 
 # Configuração nativa do Click para aceitar -h além de --help
 @click.command()
 @click.help_option('-h', '--help', help='Mostra esta mensagem e sai.')
-@click.option('--commit', is_flag=True, help="Gera apenas a mensagem de commit e exibe no console.")
-@click.option('--review', is_flag=True, help="Faz um code review das alterações locais (git diff).")
-@click.option('--fullreview', is_flag=True, help="Faz um code review de todas as alterações desde a branch principal (origin/main).")
-@click.option('--skill', is_flag=True, help="Gera o arquivo de template .gitpr.md na pasta atual.")
-@click.option('--update', is_flag=True, help="Verifica e instala a versão mais recente do GitPR.")
-def cli(commit, review, fullreview, skill,update):
+@click.option('-c', '--commit', is_flag=True, help="Gera apenas a mensagem de commit e exibe no console.")
+@click.option('-r', '--review', is_flag=True, help="Faz um code review das alterações locais (git diff).")
+@click.option('-f', '--fullreview', is_flag=True, help="Faz um code review de todas as alterações desde a branch principal (origin/main).")
+@click.option('-s', '--skill', is_flag=True, help="Gera o arquivo de template .gitpr.md na pasta atual.")
+@click.option('-u', '--update', is_flag=True, help="Verifica e instala a versão mais recente do GitPR.")
+def cli(commit, review, fullreview, skill, update):
     """
     GitPR CLI - Automação de PRs e Code Review com IA.
 
@@ -125,8 +122,8 @@ def cli(commit, review, fullreview, skill,update):
         click.echo("\n")
         return
 
-    # Code Review (Arquivo .txt)
-    if action_type == "review":
+    # Code Review (Arquivo)  
+    if action_type in ["review", "fullreview"]:
         
         if fullreview:
             pattern = os.getenv("OUTPUT_FILE_NAME_FULLREVIEW", "{branch}_{datetime}_PR_FULLREVIEW.txt")

@@ -101,11 +101,13 @@ A ferramenta irá sincronizar com o remoto (`git fetch`), comparar as suas alter
 ### **Opções e Comandos Avançados**
 Você pode passar as seguintes *flags* para ações específicas:
 
-* `gitpr --commit`: Executa um `git diff` local e exibe **apenas a mensagem de commit** sugerida diretamente no console, sem gerar arquivos. Ótimo para commits rápidos!
-* `gitpr --review`: Realiza um **Code Review** detalhado das suas alterações locais que ainda não foram commitadas, gerando um arquivo `.txt` com análises de melhoria.
-* `gitpr --fullreview`: Realiza um **Code Review completo**, analisando todas as alterações desde a branch principal remota (`git diff origin/main`), gerando também um arquivo `.txt`.
-* `gitpr --skill`: Cria um arquivo de template chamado **`.gitpr.md`** (contexto para IA) na raiz do projeto. Você pode editar este arquivo com a Arquitetura, Regras de Negócio e padrões de Clean Code do seu repositório. **Dica de Ouro:** Sempre que o GitPR for executado, ele lerá este arquivo e moldará o Code Review e o Pull Request especificamente para o contexto da sua equipe! 🧠 e **`.gitpr.linter.yml`** (regras de linter) na raiz do projeto.
-* `gitpr -h` ou `gitpr --help`: Exibe o menu de ajuda com a lista rápida de todos os comandos diretamente no terminal.
+* `-c` ou `--commit`: Executa um `git diff` local e exibe **apenas a mensagem de commit** sugerida diretamente no console, sem gerar arquivos. Ótimo para commits rápidos!
+* `-r` ou `--review`: Realiza um **Code Review** detalhado das suas alterações locais que ainda não foram commitadas, gerando um arquivo `.txt` com análises de melhoria.
+* `-f` ou `--fullreview`: Realiza um **Code Review completo**, analisando todas as alterações desde o ancestral comum com a branch remota, gerando também um arquivo `.txt`.
+* `-s` ou `--skill`: Cria os arquivos de template **`.gitpr.md`** (contexto para IA) e **`.gitpr.linter.yml`** (regras de linter estático) na raiz do projeto. **Dica de Ouro:** Sempre que o GitPR for executado, ele lerá estes arquivos e moldará o Code Review e o Pull Request especificamente para o contexto da sua equipe! 🧠
+* `-u` ou `--update`: Verifica no GitHub se existe uma nova versão do executável e realiza a atualização automaticamente (Hot-Swap).
+* `-h` ou `--help`: Exibe o menu de ajuda com a lista rápida de todos os comandos diretamente no terminal.
+
 
 ## 🛡️ Linter Local (Análise Estática)
 
@@ -128,6 +130,18 @@ rules:
 
 O Linter analisa apenas as **linhas adicionadas** no seu `git diff`, garantindo uma execução focada e extremamente rápida. Se houver violações, elas aparecerão com destaque no topo do seu arquivo de revisão.
 
+## ⚡ Sistema de Cache Local (Economia de Quota)
+
+O GitPR possui um motor inteligente de cache baseado em **MD5**. Sempre que você rodar um comando (`--review`, `--commit`, etc.), a ferramenta gera um hash exato do seu código atual (diff) e das instruções. 
+Se você rodar o mesmo comando novamente sem ter alterado o código, o GitPR intercepta a requisição e devolve o resultado instantaneamente (em milissegundos) a partir da pasta `~/.gitpr/cache/prompts/`, poupando seu tempo e suas cotas da API do Gemini!
+
+## 🔄 Auto-Updater (Atualização Over-The-Air)
+
+Nunca mais se preocupe em baixar novas versões manualmente. O GitPR possui um Guardião de Conexão e um atualizador embutido:
+* Ele verifica a disponibilidade de rede antes de iniciar para não travar seu fluxo offline.
+* Em cada execução, ele verifica silenciosamente se há um novo release oficial na API do GitHub.
+* Você pode forçar a busca e instalação rodando `gitpr --update` ou `gitpr -u`.
+* A ferramenta utiliza a técnica de *Hot-Swap*, baixando o novo `.exe` e substituindo a versão antiga de forma transparente.
 
 ## **🤝 Como Contribuir**
 
