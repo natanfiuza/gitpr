@@ -29,7 +29,8 @@ def print_banner():
 """
     click.secho(banner, fg="cyan", bold=True)
     click.secho(f"  🚀 Automação Inteligente de PRs com IA (v{__version__})", fg="yellow", bold=True)
-    click.secho("  Opções: -c,--commit | -r,--review | -f,--fullreview | -s,--skill | -u,--update | -h ou --help\n", fg="white", dim=True)
+    click.secho("  Opções: -c,--commit | -r,--review | -f,--fullreview | -l,--linter | -s,--skill | -u,--update | -h ou --help\n", fg="white", dim=True)
+
 
 # Configuração nativa do Click para aceitar -h além de --help
 @click.command()
@@ -37,9 +38,10 @@ def print_banner():
 @click.option('-c', '--commit', is_flag=True, help="Gera apenas a mensagem de commit e exibe no console.")
 @click.option('-r', '--review', is_flag=True, help="Faz um code review das alterações locais (git diff).")
 @click.option('-f', '--fullreview', is_flag=True, help="Faz um code review de todas as alterações desde a branch principal (origin/main).")
+@click.option('-l', '--linter', is_flag=True, help="Roda apenas o linter estático local (ideal para CI/CD).")
 @click.option('-s', '--skill', is_flag=True, help="Gera o arquivo de template .gitpr.md na pasta atual.")
 @click.option('-u', '--update', is_flag=True, help="Verifica e instala a versão mais recente do GitPR.")
-def cli(commit, review, fullreview, skill, update):
+def cli(commit, review, fullreview, linter, skill, update):
     """
     GitPR CLI - Automação de PRs e Code Review com IA.
 
@@ -61,7 +63,28 @@ def cli(commit, review, fullreview, skill, update):
             except OSError:
                 pass # Falha silenciosamente se o Windows ainda estiver segurando o arquivo
 
-    # 3. Módulo de Atualização
+    if linter:
+        click.secho("🔍 Iniciando validação estática local...", fg="cyan")
+        diff_text = get_git_diff()
+        
+        if not diff_text or not diff_text.strip():
+            click.secho("✅ Nada para validar (diff vazio).", fg="green")
+            return
+
+        linter_alerts = parse_diff_and_lint(diff_text)
+        
+        if linter_alerts:
+            click.secho(f"\n🚨 Falha na validação! Encontrados {len(linter_alerts)} erros nas regras do Linter:", fg="red", bold=True)
+            for alert in linter_alerts:
+                click.echo(f"  - {alert}")
+            
+            # Código de saída 1 indica erro para a Pipeline de CI/CD
+            sys.exit(1)
+        
+        click.secho("\n✅ Código aprovado pelas regras do Linter local!", fg="green", bold=True)
+        return
+
+    # Módulo de Atualização
     if update:
         click.secho("🔍 Verificando atualizações no GitHub...", fg="cyan")
         check_and_update()

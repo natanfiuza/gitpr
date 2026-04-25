@@ -1,0 +1,17 @@
+# 🚀 Sugestão de Pull Request
+
+**Commit Message Recomendada:**
+```text
+feat: adiciona funcionalidade de linter local e atualiza regras do projeto
+```
+
+---
+
+### Descrição
+Este Pull Request introduz a nova funcionalidade de linter local (`--linter` / `-l`) para validação estática de código, ideal para uso em esteiras de CI/CD. Além disso, atualiza o arquivo de contexto `.gitpr.md` com novas diretrizes para a geração de reviews e formatação.
+
+### Mudanças Realizadas
+- **CLI**: Adicionada a flag `-l` / `--linter` no comando principal (`src/main.py`).
+- **Linter**: Implementada a lógica de validação estática que interrompe a execução (`sys.exit(1)`) caso encontre erros, facilitando a integração com CI/CD.
+- **Documentação**: Atualizado o arquivo `.gitpr.md` para incluir a nova funcionalidade de linter na descrição do projeto.
+- **Regras de Negócio**: Modificada a formatação das regras no `.gitpr.md` (de lista numerada para bullet points) e adicionada nova diretriz especificando a estrutura esperada para a opção `--review`.
