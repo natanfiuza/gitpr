@@ -3,6 +3,9 @@ import os
 import json
 from google import genai
 import click
+import stat
+import urllib.request
+
 from src.security import decrypt_data
 from src.cache import get_cached_response, save_cached_response
 
@@ -145,17 +148,19 @@ def generate_skill_template():
     if not os.path.exists(skill_file):
         template_md = """# Contexto do Projeto (GitPR Skill)
 
-## 🎯 Sobre o Projeto
+## Sobre o Projeto
 Este é um sistema de [descreva o sistema]. Ele é focado em [objetivo principal].
 
-## 🏗️ Arquitetura e Tecnologias
+## Arquitetura e Tecnologias
 - Linguagem principal: [ex: Python 3.11]
 - Framework: [ex: FastAPI]
 
-## 📏 Regras de Negócio e Clean Code
-1. **Nomenclatura**: Variáveis e métodos em `snake_case`, classes em `PascalCase`.
-2. **Tipagem**: Uso de Type Hints é obrigatório.
-3. **Idioma**: Código em inglês, mensagens em português.
+## Regras de Negócio e Clean Code
+* Nomenclatura: Variáveis e métodos em `snake_case`, classes em `PascalCase`.
+* Tipagem: Uso de Type Hints é obrigatório.
+* Idioma: Código em inglês, mensagens em português.
+* --commit: A frase deve ser em português e refletir claramente a essência da mudança feita no código.
+* --review: Em reviews ou fullreviews gere um texto mais completo e detalhado. Com a estrutura Descrição, Erros Críticos e Melhorias e Observações em formato markdown
 """
         with open(skill_file, "w", encoding="utf-8") as f:
             f.write(template_md)
@@ -230,3 +235,43 @@ def get_git_full_diff():
     except subprocess.CalledProcessError as e:
         click.secho(f"❌ Erro ao calcular o diff: {e.stderr}", fg="red")
         return None
+    
+def install_git_hooks():
+    """Faz o download e instala os scripts de pre-commit e prepare-commit-msg."""
+    hooks_dir = os.path.join(os.getcwd(), ".git", "hooks")
+    
+    if not os.path.exists(hooks_dir):
+        click.secho("❌ Erro: Pasta .git não encontrada. Execute na raiz do projeto.", fg="red")
+        return False
+
+    # Mapeamento: Nome do Hook no Git -> Nome do Template no seu GitHub
+    hooks_to_install = {
+        "pre-commit": "pre-commit-template.sh",
+        "prepare-commit-msg": "prepare-commit-msg-template.sh"
+    }
+
+    base_url = "https://raw.githubusercontent.com/natanfiuza/gitpr/main/scripts/"
+    success_count = 0
+
+    for hook_name, template_name in hooks_to_install.items():
+        hook_path = os.path.join(hooks_dir, hook_name)
+        url = base_url + template_name
+
+        try:
+            click.secho(f"📥 A descarregar {hook_name}...", fg="cyan")
+            
+            with urllib.request.urlopen(url) as response:
+                content = response.read().decode('utf-8')
+                
+            with open(hook_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            # Atribui permissão de execução (chmod +x)
+            st = os.stat(hook_path)
+            os.chmod(hook_path, st.st_mode | stat.S_IEXEC)
+            
+            success_count += 1
+        except Exception as e:
+            click.secho(f"⚠️ Falha ao instalar {hook_name}: {e}", fg="yellow")
+
+    return success_count == len(hooks_to_install)
