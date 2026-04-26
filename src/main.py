@@ -41,7 +41,9 @@ def print_banner():
 @click.option('-l', '--linter', is_flag=True, help="Roda apenas o linter estático local (ideal para CI/CD).")
 @click.option('-s', '--skill', is_flag=True, help="Gera o arquivo de template .gitpr.md na pasta atual.")
 @click.option('-u', '--update', is_flag=True, help="Verifica e instala a versão mais recente do GitPR.")
-def cli(commit, review, fullreview, linter, skill, update):
+@click.option('-ih', '--installhooks', is_flag=True, help="Instala automaticamente os Git Hooks de validação no projeto.")
+@click.option('--hook', type=click.Path(), hidden=True, help="Caminho do arquivo de commit (uso interno dos hooks).")
+def cli(commit, review, fullreview, linter, skill, update, installhooks, hook):
     """
     GitPR CLI - Automação de PRs e Code Review com IA.
 
@@ -98,6 +100,13 @@ def cli(commit, review, fullreview, linter, skill, update):
         generate_skill_template()
         return
 
+    if installhooks:
+        if install_git_hooks():
+            click.secho("\n✅ Git Hooks instalados com sucesso!", fg="green", bold=True)
+            click.echo("O Linter será agora executado automaticamente antes de cada commit.")
+            click.echo("\nVeja como utilizar e configurar o --linter aqui:")
+            click.secho("https://github.com/natanfiuza/gitpr/blob/main/docs/github-ci-linter.md", fg="blue", underline=True)
+        return
     # Garante que o ambiente e as chaves estão configurados
     setup_environment()
 
@@ -139,10 +148,27 @@ def cli(commit, review, fullreview, linter, skill, update):
 
     # Apenas Commit no console
     if action_type == "commit":
-        click.secho("\n💡 Dica: Use o comando sem --commit para gerar um arquivo de descrição de PR completo.\n", fg="yellow")
-        click.secho("\n📝 Sugestão de Commit:\n", fg="green", bold=True)
-        click.echo(data.get('commit_message', 'Sem sugestão disponível.'))
-        click.echo("\n")
+        msg = data.get('commit_message', 'Atualização de código')
+
+        if hook:
+            # MODO HOOK: Injeta a mensagem direto no arquivo do Git
+            try:
+                with open(hook, "r", encoding="utf-8") as f:
+                    original_content = f.read()
+                
+                # Coloca a sugestão no topo, mantendo os comentários originais do Git abaixo
+                with open(hook, "w", encoding="utf-8") as f:
+                    f.write(f"{msg}\n\n{original_content}")
+                
+                click.secho(f"✅ Mensagem injetada com sucesso no editor!", fg="green")
+            except Exception as e:
+                click.secho(f"❌ Erro ao injetar no hook: {e}", fg="red")
+        else:
+            # MODO CONSOLE: O comportamento original que já existia
+            click.secho("\n💡 Dica: Use sem --commit para gerar o PR completo.\n", fg="yellow")
+            click.secho("\n📝 Sugestão de Commit:\n", fg="green", bold=True)
+            click.echo(msg)
+            click.echo("\n")
         return
 
     # Code Review (Arquivo)  

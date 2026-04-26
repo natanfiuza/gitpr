@@ -101,13 +101,16 @@ A ferramenta irá sincronizar com o remoto (`git fetch`), comparar as suas alter
 ### **Opções e Comandos Avançados**
 Você pode passar as seguintes *flags* para ações específicas:
 
-* `-c` ou `--commit`: Executa um `git diff` local e exibe **apenas a mensagem de commit** sugerida diretamente no console, sem gerar arquivos. Ótimo para commits rápidos!
-* `-r` ou `--review`: Realiza um **Code Review** detalhado das suas alterações locais que ainda não foram commitadas, gerando um arquivo `.txt` com análises de melhoria.
-* `-f` ou `--fullreview`: Realiza um **Code Review completo**, analisando todas as alterações desde o ancestral comum com a branch remota, gerando também um arquivo `.txt`.
-* `-s` ou `--skill`: Cria os arquivos de template **`.gitpr.md`** (contexto para IA) e **`.gitpr.linter.yml`** (regras de linter estático) na raiz do projeto. **Dica de Ouro:** Sempre que o GitPR for executado, ele lerá estes arquivos e moldará o Code Review e o Pull Request especificamente para o contexto da sua equipe! 🧠
-* `-u` ou `--update`: Verifica no GitHub se existe uma nova versão do executável e realiza a atualização automaticamente (Hot-Swap).
-* `-h` ou `--help`: Exibe o menu de ajuda com a lista rápida de todos os comandos diretamente no terminal.
+* `-c` ou `--commit`: Executa um `git diff` local e exibe **apenas a mensagem de commit** sugerida.
+* `-r` ou `--review`: Realiza um **Code Review** detalhado das alterações locais.
+* `-f` ou `--fullreview`: Realiza um **Code Review completo** analisando todas as alterações desde a branch remota.
+* `-l` ou `--linter`: Roda **apenas o linter estático local** (sem chamadas de IA). Ideal para usar em pipelines de CI/CD para bloquear código fora do padrão.
+* `-ih` ou `--installhooks`: Instala automaticamente os **Git Hooks locais** (`pre-commit` e `prepare-commit-msg`) no seu repositório para validação e auto-commit.
+* `-s` ou `--skill`: Cria os arquivos de template **`.gitpr.md`** e **`.gitpr.linter.yml`** na raiz do projeto.
+* `-u` ou `--update`: Verifica e instala a versão mais recente do GitPR (Auto-Updater).
+* `-h` ou `--help`: Exibe o menu de ajuda.
 
+> **⚙️ Nota Técnica (--hook):** O GitPR possui uma flag oculta `--hook <arquivo>` que é acionada exclusivamente pelo sistema de Git Hooks em background. Ela permite que a IA injete a mensagem sugerida diretamente no ficheiro temporário do Git, sem poluir o seu terminal.
 
 ## 🛡️ Linter Local (Análise Estática)
 
@@ -129,6 +132,17 @@ rules:
 ```
 
 O Linter analisa apenas as **linhas adicionadas** no seu `git diff`, garantindo uma execução focada e extremamente rápida. Se houver violações, elas aparecerão com destaque no topo do seu arquivo de revisão.
+
+
+## 📚 Documentação Técnica e Guias Avançados
+
+Para manter este README conciso, detalhamos as implementações mais avançadas e focadas em **DevOps** e **Integração Contínua** em documentos separados. 
+
+Se você deseja implementar o GitPR como uma barreira de qualidade automatizada na sua equipe, consulte os guias abaixo:
+
+* [**Guia de Git Hooks Locais (Shift-Left)**](docs/local-git-hooks.md): Como usar o `gitpr --installhooks` para criar travas na máquina do desenvolvedor (bloqueio de *console.log*, *localhost*, etc.) e usar a IA para escrever mensagens de commit automaticamente no editor.
+* [**Integração com CI/CD (GitHub Actions)**](docs/github-ci-linter.md): Como rodar o GitPR no seu pipeline na nuvem para realizar a validação estática e travar o botão de "Merge" de Pull Requests que violem as regras do projeto.
+
 
 ## ⚡ Sistema de Cache Local (Economia de Quota)
 
