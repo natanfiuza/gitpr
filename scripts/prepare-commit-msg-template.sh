@@ -15,6 +15,7 @@ if [ "$COMMIT_SOURCE" = "message" ]; then
     exit 0
 fi
 
+echo ""
 echo -e "${CYAN}🤖 GitPR: A pedir sugestão de commit à IA...${NC}"
 
 # Chama o GitPR repassando o caminho do arquivo ($1) para a nossa nova flag --hook

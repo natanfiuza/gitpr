@@ -12,7 +12,7 @@ echo -e "${CYAN}🔍 GitPR: A validar regras de análise estática...${NC}"
 # 1. Tenta executar o comando. 
 # Primeiro tenta o binário global 'gitpr', depois tenta via pipenv usando o run.py
 if command -v gitpr >/dev/null 2>&1; then
-    gitpr --linter
+    gitpr --linter --quiet
 elif [ -f "Pipfile" ] && command -v pipenv >/dev/null 2>&1; then
     pipenv run python run.py --linter
 else

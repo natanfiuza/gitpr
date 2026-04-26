@@ -30,7 +30,7 @@ def print_banner():
 """
     click.secho(banner, fg="cyan", bold=True)
     click.secho(f"  🚀 Automação Inteligente de PRs com IA (v{__version__})", fg="yellow", bold=True)
-    click.secho("  Opções: -c,--commit | -r,--review | -f,--fullreview | -l,--linter | -s,--skill | -u,--update | -h ou --help\n", fg="white", dim=True)
+    click.secho("  Opções: -c,--commit | -r,--review | -f,--fullreview | -l,--linter | -s,--skill | -u,--update | -ih,--installhooks | -h ou --help\n", fg="white", dim=True)
 
 
 # Configuração nativa do Click para aceitar -h além de --help
@@ -44,18 +44,19 @@ def print_banner():
 @click.option('-u', '--update', is_flag=True, help="Verifica e instala a versão mais recente do GitPR.")
 @click.option('-ih', '--installhooks', is_flag=True, help="Instala automaticamente os Git Hooks de validação no projeto.")
 @click.option('--hook', type=click.Path(), hidden=True, help="Caminho do arquivo de commit (uso interno dos hooks).")
-def cli(commit, review, fullreview, linter, skill, update, installhooks, hook):
+@click.option('-q', '--quiet', is_flag=True, hidden=True, help="Oculta o banner e logs não essenciais (uso interno).")
+def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, quiet):
     """
     GitPR CLI - Automação de PRs e Code Review com IA.
 
     COMPORTAMENTO PADRÃO (Sem opções):
     Faz o fetch, compara com a branch principal remota e gera um arquivo Markdown (.md) com a descrição completa para o Pull Request.
     """
-    # Exibe o banner
-    print_banner()
+    # Silencia o banner se estiver no modo quiet ou via hook
+    if not quiet and not hook:
+        print_banner()
 
-    # Guardião de Conexão (Failing Fast)
-    check_internet_connection()
+
 
     # Limpeza do Hot-Swap (Deleta o .old se existir)
     if getattr(sys, 'frozen', False):
@@ -71,7 +72,7 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook):
         diff_text = get_git_diff()
         
         if not diff_text or not diff_text.strip():
-            click.secho("✅ Nada para validar (diff vazio).", fg="green")
+            if not quiet: click.secho("✅ Nada para validar (diff vazio).", fg="green")
             return
 
         linter_alerts = parse_diff_and_lint(diff_text)
@@ -79,16 +80,18 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook):
         if linter_alerts:
             click.secho(f"\n🚨 Falha na validação! Encontrados {len(linter_alerts)} erros nas regras do Linter:", fg="red", bold=True)
             for alert in linter_alerts:
-                click.echo(f"  - {alert}")
-            
+                click.echo(f"  - {alert}")            
             # Código de saída 1 indica erro para a Pipeline de CI/CD
             sys.exit(1)
         
-        click.secho("\n✅ Código aprovado pelas regras do Linter local!", fg="green", bold=True)
+        if not quiet: click.secho("\n✅ Código aprovado pelas regras do Linter local!", fg="green", bold=True)
         return
 
+    # Guardião de Conexão (Failing Fast)
+    check_internet_connection()
+
     # Módulo de Atualização
-    if update:
+    if update:    
         click.secho("🔍 Verificando atualizações no GitHub...", fg="cyan")
         check_and_update()
         return # Encerra após a verificação manual
@@ -101,7 +104,9 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook):
         generate_skill_template()
         return
 
-   if installhooks:
+ 
+    
+    if installhooks:
         if install_git_hooks():
             click.secho("\n✅ Git Hooks instalados com sucesso!", fg="green", bold=True)
             click.echo("O Linter será agora executado automaticamente antes de cada commit.")
@@ -118,6 +123,8 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook):
             click.secho("  https://github.com/natanfiuza/gitpr/blob/main/docs/linter-regras-customizadas.md", fg="blue")
             click.echo("---\n")
         return
+    
+    
     # Garante que o ambiente e as chaves estão configurados
     setup_environment()
 
