@@ -12,7 +12,8 @@ from src.core import (
     get_current_branch, 
     generate_pr_content,
     get_skill_context,
-    generate_skill_template
+    generate_skill_template,
+    install_git_hooks
 )
 from src.linter_engine import parse_diff_and_lint
 
@@ -100,12 +101,22 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook):
         generate_skill_template()
         return
 
-    if installhooks:
+   if installhooks:
         if install_git_hooks():
             click.secho("\n✅ Git Hooks instalados com sucesso!", fg="green", bold=True)
             click.echo("O Linter será agora executado automaticamente antes de cada commit.")
-            click.echo("\nVeja como utilizar e configurar o --linter aqui:")
-            click.secho("https://github.com/natanfiuza/gitpr/blob/main/docs/github-ci-linter.md", fg="blue", underline=True)
+            
+            click.echo("\n---")
+            click.echo("📚 Guias de Utilização:")
+            
+            # Link da documentação geral de Hooks
+            click.echo("• Como utilizar Git Hooks:")
+            click.secho("  https://github.com/natanfiuza/gitpr/blob/main/docs/local-git-hooks.md", fg="blue")
+            
+            # Novo link: Documentação de Regras Customizadas
+            click.echo("• Como criar novas regras de Linter (.gitpr.linter.yml):")
+            click.secho("  https://github.com/natanfiuza/gitpr/blob/main/docs/linter-regras-customizadas.md", fg="blue")
+            click.echo("---\n")
         return
     # Garante que o ambiente e as chaves estão configurados
     setup_environment()

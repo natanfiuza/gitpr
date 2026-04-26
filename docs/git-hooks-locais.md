@@ -1,6 +1,6 @@
 # Documentação Técnica: Integração de Git Hooks Locais (GitPR)
 
-Esta documentação detalha a arquitetura e o uso da funcionalidade de Git Hooks automáticos do GitPR CLI. A implementação adota a prática de **\*\*Shift Left\*\***, trazendo a validação de código e a geração de mensagens (IA) para o momento exato do commit, antes de qualquer integração com o servidor remoto.
+Esta documentação detalha a arquitetura e o uso da funcionalidade de Git Hooks automáticos do GitPR CLI. A implementação adota a prática de ****Shift Left****, trazendo a validação de código e a geração de mensagens (IA) para o momento exato do commit, antes de qualquer integração com o servidor remoto.
 
 ---
 
@@ -18,7 +18,7 @@ gitpr -ih
 
 1. Verifica a integridade do diretório .git/hooks.  
 2. Faz o download da versão mais recente dos scripts pre-commit e prepare-commit-msg diretamente do repositório oficial do GitPR.  
-3. Aplica automaticamente as permissões de execução POSIX (chmod \+x) aos ficheiros, garantindo compatibilidade entre Linux, macOS e ambientes Git Bash no Windows.
+3. Aplica automaticamente as permissões de execução POSIX (chmod +x) aos ficheiros, garantindo compatibilidade entre Linux, macOS e ambientes Git Bash no Windows.
 
 ---
 
@@ -51,8 +51,9 @@ Este hook elimina a necessidade de escrever mensagens de commit manualmente. Ele
 
 1. Adicione os seus arquivos ao stage (git add .).  
 2. Execute apenas o comando base de commit, sem passar a mensagem:  
-   Bash  
+   ```bash  
    git commit
+   ```
 
 3. O hook entra em ação exibindo a mensagem: 🤖 GitPR: A pedir sugestão de commit à IA...  
 4. O GitPR roda a flag oculta --hook, enviando o seu *diff* para o Gemini.  

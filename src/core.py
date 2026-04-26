@@ -5,6 +5,7 @@ from google import genai
 import click
 import stat
 import urllib.request
+import time
 
 from src.security import decrypt_data
 from src.cache import get_cached_response, save_cached_response
@@ -107,37 +108,46 @@ def generate_pr_content(diff_text, action_type="pr", skill_context=""):
         click.secho("⚡ Resposta recuperada do cache local.", fg="green", dim=True)
         return cached_data
 
-    # CHAMADA À API COM CONFIGURAÇÃO DETERMINÍSTICA
-    try:
-        click.secho("🤖 O GitPR está analisando o seu código...\n", fg="cyan")
-        client = genai.Client(api_key=api_key)
-        
-        response = client.models.generate_content(
-            model=api_model,
-            contents=prompt,
-            config={
-                "system_instruction": instrucao_sistema,
-                "response_mime_type": "application/json",
-                "temperature": 0.0,
-                "top_p": 0.1,
-                "top_k": 1
-            }
-        )
-        
-        result_json = json.loads(response.text)
+    # CHAMADA À API COM MECANISMO DE RETRY
+    max_retries = 3
+    retry_delay = 2 # segundos de espera entre tentativas
 
-        # Se a IA retornar uma lista [ { ... } ], pega o primeiro objeto
-        if isinstance(result_json, list):
-            result_json = result_json[0] if result_json else {}
+    click.secho("🤖 O GitPR está analisando o seu código...\n", fg="cyan")
+    client = genai.Client(api_key=api_key)
 
-        # SALVA NO CACHE
-        save_cached_response(action_folder, action_type, prompt, result_json)
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = client.models.generate_content(
+                model=api_model,
+                contents=prompt,
+                config={
+                    "system_instruction": instrucao_sistema,
+                    "response_mime_type": "application/json",
+                    "temperature": 0.0,
+                    "top_p": 0.1,
+                    "top_k": 1
+                }
+            )
+            
+            result_json = json.loads(response.text)
 
-        return result_json
+            # 🛡️ ESCUDO: Se a IA retornar uma lista [ { ... } ]
+            if isinstance(result_json, list):
+                result_json = result_json[0] if result_json else {}
 
-    except Exception as e:
-        click.secho(f"❌ Erro ao contactar a API do Gemini: {str(e)}", fg="red")
-        return None
+            # SALVA NO CACHE E RETORNA
+            save_cached_response(action_folder, action_type, prompt, result_json)
+            return result_json
+
+        except Exception as e:
+            if attempt < max_retries:
+                # O dim=True deixa o texto mais apagado no terminal para não poluir visualmente
+                click.secho(f"⚠️ Instabilidade de rede detetada. A tentar novamente ({attempt}/{max_retries})...", fg="yellow", dim=True)
+                time.sleep(retry_delay)
+            else:
+                # Falhou em todas as tentativas
+                click.secho(f"❌ Erro crítico ao contactar a API do Gemini após {max_retries} tentativas: {str(e)}", fg="red", bold=True)
+                return None
 
 def generate_skill_template():
     """Gera os arquivos de template .gitpr.md e .gitpr.linter.yml na raiz do projeto."""
