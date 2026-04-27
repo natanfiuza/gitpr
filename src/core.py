@@ -1,12 +1,12 @@
-import subprocess
 import os
 import json
-from google import genai
-import click
 import stat
-import urllib.request
 import time
-
+import click
+import subprocess
+import urllib.request
+import urllib.error
+from google import genai
 from src.security import decrypt_data
 from src.cache import get_cached_response, save_cached_response
 
@@ -45,21 +45,34 @@ def get_current_branch():
         return "main" # Fallback
 
 
-def get_skill_context():
-    """Lê o arquivo de contexto .gitpr.md se existir no diretório atual."""
-    # Procura o arquivo na raiz de onde o comando gitpr foi executado
-    skill_file = os.path.join(os.getcwd(), ".gitpr.md")
+def get_skill_context(action_type="pr"):
+    """Lê o arquivo de contexto correto baseado na ação (PR/Commit ou Review)."""
     
-    if os.path.exists(skill_file):
+    # Define qual arquivo procurar
+    if action_type in ["commit", "pr"]:
+        target_file = ".gitpr.pr.md"
+    else:
+        target_file = ".gitpr.review.md"
+
+    skill_file = os.path.join(os.getcwd(), target_file)
+    
+    # Fallback para o arquivo antigo (para retrocompatibilidade com usuários da versão anterior)
+    legacy_file = os.path.join(os.getcwd(), ".gitpr.md")
+
+    # Verifica o novo primeiro; se não achar, tenta o antigo
+    file_to_load = skill_file if os.path.exists(skill_file) else (legacy_file if os.path.exists(legacy_file) else None)
+    
+    if file_to_load:
         try:
-            with open(skill_file, "r", encoding="utf-8") as f:
+            with open(file_to_load, "r", encoding="utf-8") as f:
                 conteudo = f.read()
-                click.secho("🧠 Arquivo .gitpr.md (Skill) encontrado e carregado!", fg="blue")
+                nome_arquivo = os.path.basename(file_to_load)
+                click.secho(f"🧠 Arquivo {nome_arquivo} (Skill) encontrado e carregado!", fg="blue")
                 return conteudo
         except Exception as e:
-            click.secho(f"⚠️ Aviso: Falha ao ler o arquivo .gitpr.md ({e})", fg="yellow")
+            click.secho(f"⚠️ Aviso: Falha ao ler o arquivo {nome_arquivo} ({e})", fg="yellow")
     
-    # Retorna vazio se não existir, para a IA usar o conhecimento padrão
+    # Retorna vazio se não existir
     return ""
 
 
@@ -94,14 +107,20 @@ def generate_pr_content(diff_text, action_type="pr", skill_context=""):
     # Se houver skill_context, ele vira a regra mestre do sistema.
     instrucao_sistema = skill_context if skill_context else "Atue como um Desenvolvedor Sênior e Revisor de Código exigente."
 
-    # Construção dos Prompts curtos (forçando o formato de Objeto)
+    
+    # O arquivo de skill baixado assume o comando. 
+    # Se ele não existir (por algum motivo), usamos um fallback seguro.
     if action_type == "commit":
+        instrucao_sistema = skill_context if skill_context else "Você é um especialista em Git. Gere mensagens de commit concisas."
         prompt = f"Gere APENAS um objeto JSON no formato {{\"commit_message\": \"...\"}} para este diff:\n{diff_text}"
-    elif action_type == "review" or action_type == "fullreview":
+        
+    elif action_type in ["review", "fullreview"]:
+        instrucao_sistema = skill_context if skill_context else "Você é um Arquiteto de Software Sênior. Foque em apontar melhorias de arquitetura."
         prompt = f"Gere APENAS um objeto JSON no formato {{\"review\": \"...\"}} apontando erros e melhorias para este diff:\n{diff_text}"
+        
     else: # pr
+        instrucao_sistema = skill_context if skill_context else "Você é um Tech Lead redigindo descrições de PR limpas e técnicas."
         prompt = f"Gere APENAS um objeto JSON no formato {{\"commit_message\": \"...\", \"pr_description\": \"...\"}} para este diff:\n{diff_text}"
-
     # TENTA RECUPERAR DO CACHE
     cached_data = get_cached_response(action_folder, prompt)
     if cached_data:
@@ -150,56 +169,53 @@ def generate_pr_content(diff_text, action_type="pr", skill_context=""):
                 return None
 
 def generate_skill_template():
-    """Gera os arquivos de template .gitpr.md e .gitpr.linter.yml na raiz do projeto."""
-    skill_file = os.path.join(os.getcwd(), ".gitpr.md")
-    linter_file = os.path.join(os.getcwd(), ".gitpr.linter.yml")
+    """
+    Faz o download dos templates .gitpr.pr.md, .gitpr.review.md 
+    e .gitpr.linter.yml diretamente do repositório oficial.
+    """
+    click.secho("\n📥 Iniciando a configuração dos templates do GitPR...", fg="cyan", bold=True)
     
-    # Gera o arquivo MD (Contexto para IA)
-    if not os.path.exists(skill_file):
-        template_md = """# Contexto do Projeto (GitPR Skill)
+    base_url = "https://raw.githubusercontent.com/natanfiuza/gitpr/main/templates/"
+    
+    # Atualizado para contemplar os 3 arquivos
+    files_to_download = {
+        ".gitpr.pr.md": "gitpr.pr.md",
+        ".gitpr.review.md": "gitpr.review.md",
+        ".gitpr.linter.yml": "gitpr.linter.yml"
+    }
+    
+    success_count = 0
+    
+    for local_name, remote_name in files_to_download.items():
+        file_path = os.path.join(os.getcwd(), local_name)
+        url = base_url + remote_name
+        
+        if os.path.exists(file_path):
+            click.secho(f"⚠️ O arquivo {local_name} já existe neste diretório. Ele não será sobrescrito.", fg="yellow")
+            continue
+            
+        try:
+            click.echo(f"A descarregar {local_name}...")
+            with urllib.request.urlopen(url, timeout=5) as response:
+                content = response.read().decode('utf-8')
+                
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(content)
+                
+            success_count += 1
+            
+        except urllib.error.URLError as e:
+            click.secho(f"❌ Erro de rede ao baixar {local_name}: {e.reason}", fg="red")
+        except Exception as e:
+            click.secho(f"❌ Falha ao processar {local_name}: {e}", fg="red")
 
-## Sobre o Projeto
-Este é um sistema de [descreva o sistema]. Ele é focado em [objetivo principal].
-
-## Arquitetura e Tecnologias
-- Linguagem principal: [ex: Python 3.11]
-- Framework: [ex: FastAPI]
-
-## Regras de Negócio e Clean Code
-* Nomenclatura: Variáveis e métodos em `snake_case`, classes em `PascalCase`.
-* Tipagem: Uso de Type Hints é obrigatório.
-* Idioma: Código em inglês, mensagens em português.
-* --commit: A frase deve ser em português e refletir claramente a essência da mudança feita no código.
-* --review: Em reviews ou fullreviews gere um texto mais completo e detalhado. Com a estrutura Descrição, Erros Críticos e Melhorias e Observações em formato markdown
-"""
-        with open(skill_file, "w", encoding="utf-8") as f:
-            f.write(template_md)
-        click.secho("✅ Arquivo .gitpr.md gerado com sucesso!", fg="green")
-
-    # Gera o arquivo YAML (Linter Estático)
-    if not os.path.exists(linter_file):
-        template_yaml = """rules:
-  - name: "check-console-log"
-    extensions: ["js"]
-    regex: 'console\.log'
-    message: "🚨 'console.log' encontrado no arquivo {file_name} (Linha {line_number})"
-    ignore_comments: true
-    ignore_paths:
-      - "app/js/plugin/multiselect/*"
-      - "js/axios/*"
-      - "*/Arquivos_HighCharts/*"
-      - "*jquery*.js"
-      - "*moment.js"
-
-  - name: "check-localhost"
-    extensions: ["js"]
-    regex: 'http(s)?://(localhost|127\.0\.0\.1)'
-    message: "🚨 Uso de 'localhost' detectado na linha {line_number} do arquivo {file_name}"
-    ignore_comments: true
-"""
-        with open(linter_file, "w", encoding="utf-8") as f:
-            f.write(template_yaml)
-        click.secho("✅ Arquivo .gitpr.linter.yml gerado com sucesso!", fg="green")
+    if success_count > 0:
+        click.secho("\n✅ Templates base configurados com sucesso!", fg="green", bold=True)
+        click.echo("Você pode agora abrir os arquivos gerados e personalizar o comportamento da ferramenta para o seu projeto:\n")       
+        click.echo("  1. As regras de arquitetura para a IA no arquivo '.gitpr.pr.md' e '.gitpr.review.md'\n")
+        click.echo("  2. As regras de regex locais no arquivo '.gitpr.linter.yml'\n")
+    else:
+        click.echo("\nNenhum arquivo novo foi baixado.")
 
 def get_base_branch():
     """Descobre a branch principal remota (ex: main ou master)."""
