@@ -1,97 +1,104 @@
 import re
 import fnmatch
-import yaml
-import os
-import click
+from src.config import load_linter_rules
 
-def parse_diff_and_lint(diff_text, linter_file_path=".gitpr.linter.yml"):
-    """Varre o git diff apenas nas linhas adicionadas e aplica as regras do Linter."""
-    if not os.path.exists(linter_file_path):
-        return [] # Se não houver arquivo de linter, segue o jogo silenciosamente
-    click.secho("🔍 Rodando Linter Local de Análise Estática...", fg="cyan")
-    with open(linter_file_path, 'r', encoding='utf-8') as f:
-        try:
-            config = yaml.safe_load(f)
-        except yaml.YAMLError:
-            return ["🚨 Erro crítico: O arquivo .gitpr.linter.yml possui erros de formatação YAML."]
 
-    rules = config.get('rules', [])
+def _is_rule_applicable(rule, current_file, file_extension):
+    """Verifica se a regra se aplica ao arquivo atual baseado na extensão e caminhos."""
+    # Verifica extensão
+    if file_extension not in rule.get('extensions', []):
+        return False
+
+    # Verifica require_paths (se existir, o arquivo TEM que dar match em algum)
+    require_paths = rule.get('require_paths', [])
+    if require_paths:
+        match_required = any(re.search(p.replace('*', '.*'), current_file) for p in require_paths)
+        if not match_required:
+            return False
+
+    # Verifica ignore_paths (se der match em algum, a regra não se aplica)
+    ignore_paths = rule.get('ignore_paths', [])
+    if ignore_paths:
+        should_ignore = any(re.search(p.replace('*', '.*'), current_file) for p in ignore_paths)
+        if should_ignore:
+            return False
+
+    return True
+
+def _apply_rule(rule, code_line, line_number, current_file, alerts):
+    """Aplica a regex da regra na linha de código e registra o alerta se necessário."""
+    # Lógica de ignorar comentários no código
+    if rule.get('ignore_comments', False):
+        comment_patterns = [r'^//', r'^#', r'^/\*', r'^\*']
+        if any(re.match(cp, code_line.strip()) for cp in comment_patterns):
+            return
+
+    # Validação da Regex da regra
+    try:
+        if re.search(rule['regex'], code_line):
+            message = rule['message'].replace('{file_name}', current_file).replace('{line_number}', str(line_number))
+            
+            # Extrai a severidade (padrão é error)
+            level = rule.get('level', 'error').lower()
+            
+            if level == 'warning':
+                alerts["warnings"].append(message)
+            else:
+                alerts["errors"].append(message)
+    except re.error as e:
+        alerts["errors"].append(f"Regra '{rule.get('name')}' contém Regex inválida: {e}")
+
+def parse_diff_and_lint(diff_text):
+    """
+    Analisa o git diff e aplica as regras definidas no .gitpr.linter.yml.
+    Retorna um dicionário com duas listas: 'errors' (críticos) e 'warnings' (alertas).
+    
+    Args:
+        diff_text (str): O texto do git diff a ser analisado.
+        
+    Returns:
+        dict: Dicionário com as chaves 'errors' e 'warnings'.
+    """
+    rules = load_linter_rules()
     if not rules:
-        return []
+        return {"errors": [], "warnings": []}
 
-    alerts = []
-    current_file = ""
-    current_line_num = 0
+    alerts = {
+        "errors": [],
+        "warnings": []
+    }
 
-    # Iteramos o texto do Git Diff
-    for line in diff_text.split('\n'):
-        # Detecta qual arquivo estamos analisando no diff
+    current_file = None
+    file_extension = None
+    line_number = 0
+
+    lines = diff_text.split('\n')
+    
+    for line in lines:
         if line.startswith('+++ b/'):
             current_file = line[6:]
+            file_extension = current_file.split('.')[-1] if '.' in current_file else ''
+            line_number = 0 
             continue
-        
-        # Detecta o número da linha atual no novo arquivo (@@ -start,count +start,count @@)
-        elif line.startswith('@@ '):
-            match = re.search(r'\+([0-9]+)(,[0-9]+)? @@', line)
+
+        if line.startswith('@@'):
+            match = re.search(r'\+(\d+)', line)
             if match:
-                current_line_num = int(match.group(1))
+                line_number = int(match.group(1)) - 1
             continue
 
-        # Processa APENAS as linhas adicionadas (+)
         if line.startswith('+') and not line.startswith('+++'):
-            actual_code = line[1:] # Remove o '+' do diff
-            stripped_code = actual_code.strip()
-            
+            line_number += 1
+            code_line = line[1:].strip()
+
+            if not current_file or not code_line:
+                continue
+
             for rule in rules:
-
-                # Filtro de Extensão
-                exts = rule.get('extensions', [])
-                file_ext = current_file.split('.')[-1] if '.' in current_file else ''
-                if exts and file_ext not in exts:
+                if not _is_rule_applicable(rule, current_file, file_extension):
                     continue
-                # Filtro de Caminhos Obrigatórios (Novo)
-                require_paths = rule.get('require_paths', [])
-                if require_paths:
-                    is_in_required_path = False
-                    for path_pattern in require_paths:
-                        if fnmatch.fnmatch(current_file, path_pattern) or fnmatch.fnmatch(current_file, f"*/{path_pattern}"):
-                            is_in_required_path = True
-                            break
-                    if not is_in_required_path:
-                        continue
-
-                # Filtro de Arquivos/Paths Ignorados (Substitui o -not -path do Linux)
-                ignore_paths = rule.get('ignore_paths', [])
-                ignored = False
-                for path_pattern in ignore_paths:
-                    # fnmatch permite usar curingas (*). Ex: */js/axios/*
-                    if fnmatch.fnmatch(current_file, path_pattern) or fnmatch.fnmatch(current_file, f"*/{path_pattern}"):
-                        ignored = True
-                        break
-                if ignored:
-                    continue
-                    
-                # Filtro de Comentários
-                if rule.get('ignore_comments', False):
-                    # Ignora se começar com barras duplas, asterisco, /* ou #
-                    if stripped_code.startswith('//') or stripped_code.startswith('/*') or stripped_code.startswith('*') or stripped_code.startswith('#'):
-                        continue
-                        
-                # Avaliação da Expressão Regular
-                pattern = rule.get('regex', '')
-                if pattern and re.search(pattern, actual_code):
-                    msg_template = rule.get('message', "🚨 Violação de regra na linha {line_number} do arquivo {file_name}")
-                    msg = msg_template.format(
-                        line_number=current_line_num,
-                        file_name=current_file,
-                        line_text=stripped_code
-                    )
-                    alerts.append(msg)
-            
-            current_line_num += 1
-            
-        # Linhas de contexto (espaço em branco no início) apenas incrementam o contador
-        elif not line.startswith('-') and not line.startswith('\\'):
-            current_line_num += 1
+                
+                # Regra aplicável! Passa para a função de execução.
+                _apply_rule(rule, code_line, line_number, current_file, alerts)
 
     return alerts

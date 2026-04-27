@@ -68,23 +68,39 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
                 pass # Falha silenciosamente se o Windows ainda estiver segurando o arquivo
 
     if linter:
-        click.secho("🔍 Iniciando validação estática local...", fg="cyan")
         diff_text = get_git_diff()
         
         if not diff_text or not diff_text.strip():
             if not quiet: click.secho("✅ Nada para validar (diff vazio).", fg="green")
             return
 
-        linter_alerts = parse_diff_and_lint(diff_text)
+        linter_results = parse_diff_and_lint(diff_text)
         
-        if linter_alerts:
-            click.secho(f"\n🚨 Falha na validação! Encontrados {len(linter_alerts)} erros nas regras do Linter:", fg="red", bold=True)
-            for alert in linter_alerts:
-                click.echo(f"  - {alert}")            
-            # Código de saída 1 indica erro para a Pipeline de CI/CD
+        has_warnings = len(linter_results["warnings"]) > 0
+        has_errors = len(linter_results["errors"]) > 0
+
+        # Processamento de Warnings (Apenas Avisos)
+        if has_warnings:
+            # Os avisos DEVEM aparecer sempre, mesmo no modo quiet
+            click.secho(f"\n⚠️ O Linter gerou {len(linter_results['warnings'])} aviso(s) de boas práticas:", fg="yellow", bold=True)
+            for alert in linter_results["warnings"]:
+                click.echo(f"  - {alert}")
+
+        # Processamento de Erros (Críticos, Bloqueiam o Commit)
+        if has_errors:
+            # Os erros DEVEM aparecer sempre, mesmo no modo quiet
+            click.secho(f"\n🚨 Falha na validação! Encontrados {len(linter_results['errors'])} erro(s) críticos:", fg="red", bold=True)
+            for alert in linter_results["errors"]:
+                click.echo(f"  - {alert}")
+            # Trava o Git apenas se houver erros críticos
             sys.exit(1)
         
-        if not quiet: click.secho("\n✅ Código aprovado pelas regras do Linter local!", fg="green", bold=True)
+        # Sucesso silencioso (Nenhum erro crítico encontrado)
+        if not quiet: 
+            if has_warnings:
+                click.secho("\n✅ Código aprovado com avisos. O commit prosseguirá.", fg="green")
+            else:
+                click.secho("\n✅ Código limpo! Nenhuma violação encontrada pelo Linter local.", fg="green", bold=True)
         return
 
     # Guardião de Conexão (Failing Fast)
@@ -151,8 +167,8 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
         click.secho("\n⚠️ Nenhum código novo encontrado. Faça alguma alteração ou verifique sua branch antes de rodar o comando.\n", fg="yellow")
         return
 
-    # Busca o contexto do arquivo .gitpr.md (se existir)
-    skill_context = get_skill_context()
+    # Busca o contexto do arquivo correspondente à ação (PR ou Review)
+    skill_context = get_skill_context(action_type)
 
     # Chama a IA do Gemini para gerar o conteúdo
     data = generate_pr_content(diff_text, action_type, skill_context)

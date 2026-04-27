@@ -1,10 +1,12 @@
 import os
 import sys
 import socket
-from pathlib import Path
 import click
+import yaml
+from pathlib import Path
 from dotenv import load_dotenv
 from src.security import encrypt_data
+
 
 def setup_environment():
     """
@@ -75,3 +77,33 @@ def check_internet_connection(timeout=2):
         click.secho("O GitPR precisa de acesso à rede para consultar a IA e verificar atualizações.", fg="yellow")
         click.secho("Verifique sua conexão e tente novamente.\n", fg="white")
         sys.exit(1)
+        
+
+def load_linter_rules():
+    """
+    Carrega as regras do linter estático a partir do arquivo .gitpr.linter.yml.
+    Retorna uma lista de regras ou uma lista vazia se o arquivo não existir.
+    """
+    file_path = os.path.join(os.getcwd(), ".gitpr.linter.yml")
+
+    # Se o arquivo não existir no projeto, não é um erro. Apenas não há regras a aplicar.
+    if not os.path.exists(file_path):
+        return []
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+
+        # Retorna a lista de regras ou vazio se o arquivo estiver em branco
+        if not config or "rules" not in config:
+            return []
+
+        return config.get("rules", [])
+
+    except yaml.YAMLError as e:
+        # Se o usuário errar a indentação ou aspas, avisamos sem estourar o terminal
+        click.secho(f"\n❌ Erro de sintaxe no arquivo .gitpr.linter.yml:\n{e}", fg="red")
+        return []
+    except Exception as e:
+        click.secho(f"\n❌ Erro inesperado ao ler as regras do linter: {e}", fg="red")
+        return []        
