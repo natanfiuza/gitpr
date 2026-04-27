@@ -49,9 +49,11 @@ def get_skill_context(action_type="pr"):
     """Lê o arquivo de contexto correto baseado na ação (PR/Commit ou Review)."""
     
     # Define qual arquivo procurar
-    if action_type in ["commit", "pr"]:
+    if action_type == "commit":
+        target_file = ".gitpr.commit.md"
+    elif action_type == "pr":
         target_file = ".gitpr.pr.md"
-    else:
+    else: # review ou fullreview
         target_file = ".gitpr.review.md"
 
     skill_file = os.path.join(os.getcwd(), target_file)
@@ -179,6 +181,7 @@ def generate_skill_template():
     
     # Atualizado para contemplar os 3 arquivos
     files_to_download = {
+        ".gitpr.commit.md": "gitpr.commit.md",
         ".gitpr.pr.md": "gitpr.pr.md",
         ".gitpr.review.md": "gitpr.review.md",
         ".gitpr.linter.yml": "gitpr.linter.yml"

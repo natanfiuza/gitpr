@@ -132,7 +132,7 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
             
             # Link da documentação geral de Hooks
             click.echo("• Como utilizar Git Hooks:")
-            click.secho("  https://github.com/natanfiuza/gitpr/blob/main/docs/local-git-hooks.md", fg="blue")
+            click.secho("  https://github.com/natanfiuza/gitpr/blob/main/docs/git-hooks-locais.md", fg="blue")
             
             # Novo link: Documentação de Regras Customizadas
             click.echo("• Como criar novas regras de Linter (.gitpr.linter.yml):")
