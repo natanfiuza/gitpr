@@ -51,7 +51,7 @@ def setup_environment():
 
     load_dotenv(ENV_FILE)
     
-    # 1. Pergunta o provedor padrão se não existir
+    # Pergunta o provedor padrão se não existir
     provider = os.getenv("DEFAULT_AI_PROVIDER")
     if not provider:
         click.secho("🤖 Bem-vindo ao GitPR! Vamos configurar o seu motor de IA.", fg="cyan", bold=True)
@@ -63,7 +63,7 @@ def setup_environment():
         set_key(ENV_FILE, "DEFAULT_AI_PROVIDER", provider)
         click.echo("")
 
-    # 2. Verifica se a chave do provedor escolhido existe
+    # Verifica se a chave do provedor escolhido existe
     api_key = get_api_key(provider)
     if not api_key:
         click.secho(f"🔑 Chave de API do {provider.capitalize()} não encontrada.", fg="yellow")
