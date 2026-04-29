@@ -4,59 +4,78 @@ import socket
 import click
 import yaml
 from pathlib import Path
-from dotenv import load_dotenv
-from src.security import encrypt_data
+from dotenv import load_dotenv, set_key
+from src.security import encrypt_data, decrypt_data, get_or_create_key
 
+# Caminho para o ficheiro .env global na pasta do utilizador (ex: ~/.gitpr/.env)
+ENV_FILE = os.path.join(os.path.expanduser("~"), ".gitpr", ".env")
+
+def get_ai_provider():
+    """Retorna o provedor de IA padrão configurado, ou 'gemini' como fallback."""
+    load_dotenv(ENV_FILE)
+    return os.getenv("DEFAULT_AI_PROVIDER", "gemini").lower()
+
+def get_api_key(provider):
+    """Lê e desencripta a chave de API correspondente ao provedor escolhido."""
+    load_dotenv(ENV_FILE)
+    
+    if provider == "gemini":
+        encrypted_key = os.getenv("GEMINI_API_KEY_ENCRYPTED")
+    elif provider == "deepseek":
+        encrypted_key = os.getenv("DEEPSEEK_API_KEY_ENCRYPTED")
+    else:
+        return None
+
+    if encrypted_key:
+        return decrypt_data(encrypted_key)
+    return None
+
+def get_api_model(provider):
+    """Retorna o modelo de IA configurado no .env ou um fallback padrão."""
+    load_dotenv(ENV_FILE)
+    
+    if provider == "gemini":
+        return os.getenv("GEMINI_API_MODEL", "gemini-pro-latest")
+    elif provider == "deepseek":
+        return os.getenv("DEEPSEEK_API_MODEL", "deepseek-v4-pro")
+        
+    return None
 
 def setup_environment():
-    """
-    Verifica se o diretório e o arquivo .env existem no diretório home do usuário (~/.gitpr).
-    Se não existirem, cria e solicita as configurações iniciais.
-    Em seguida, carrega as variáveis de ambiente.
-    """
-    home_dir = Path.home() / ".gitpr"
-    env_file = home_dir / ".env"
+    """Garante que as chaves de encriptação, o provedor padrão e a chave da API estão configurados."""
+    # Garante que a pasta global existe
+    os.makedirs(os.path.dirname(ENV_FILE), exist_ok=True)
+    
+    # Chama a função existente em security.py para garantir que a chave mestra existe
+    get_or_create_key()
 
-    if not env_file.exists():
-        click.secho("🔧 Primeira execução detectada! Vamos configurar o GitPR CLI.", fg="cyan")
-        home_dir.mkdir(parents=True, exist_ok=True)
-        
-        api_key = click.prompt("🔑 Insira sua GEMINI_API_KEY", hide_input=True)
-        
-        # Adicionamos a opção do modelo com o default sugerido
-        api_model = click.prompt(
-            "🤖 Modelo do Gemini", 
-            default="gemini-2.5-flash"
-        )
-        
-        default_filename = "{branch}_{datetime}_PR_DESC.md"
-        output_filename = click.prompt(
-            "📄 Padrão do nome do arquivo de saída", 
-            default=default_filename
-        )
-        # Padrões para Review e Full Review
-        default_review_pattern = "{branch}_{datetime}_PR_REVIEW.txt"
-        output_review = click.prompt(
-            "📄 Padrão do nome do arquivo de REVIEW", 
-            default=default_review_pattern
-        )
+    load_dotenv(ENV_FILE)
+    
+    # Pergunta o provedor padrão se não existir
+    provider = os.getenv("DEFAULT_AI_PROVIDER")
+    if not provider:
+        click.secho("🤖 Bem-vindo ao GitPR! Vamos configurar o seu motor de IA.", fg="cyan", bold=True)
+        provider = click.prompt(
+            "Qual inteligência artificial deseja utilizar como padrão?", 
+            type=click.Choice(['gemini', 'deepseek'], case_sensitive=False),
+            default='gemini'
+        ).lower()
+        set_key(ENV_FILE, "DEFAULT_AI_PROVIDER", provider)
+        click.echo("")
 
-        default_full_pattern = "{branch}_{datetime}_PR_FULLREVIEW.txt"
-        output_full = click.prompt(
-            "📄 Padrão do nome do arquivo de FULL REVIEW", 
-            default=default_full_pattern
-        )
-        with open(env_file, "w", encoding="utf-8") as f:
-            f.write(f"GEMINI_API_KEY={encrypt_data(api_key)}\n")
-            f.write(f"GEMINI_API_MODEL={api_model}\n")
-            f.write(f"OUTPUT_FILE_NAME={output_filename}\n")
-            f.write(f"OUTPUT_FILE_NAME_REVIEW={output_review}\n") 
-            f.write(f"OUTPUT_FILE_NAME_FULLREVIEW={output_full}\n")
-            
-        click.secho(f"✅ Configuração salva em: {env_file}\n", fg="green")
-
-    # Carrega as variáveis de ambiente do arquivo
-    load_dotenv(env_file)
+    # Verifica se a chave do provedor escolhido existe
+    api_key = get_api_key(provider)
+    if not api_key:
+        click.secho(f"🔑 Chave de API do {provider.capitalize()} não encontrada.", fg="yellow")
+        raw_key = click.prompt(f"Cole aqui a sua chave de API do {provider.capitalize()}", hide_input=True)
+        
+        # Encripta e guarda com o prefixo correto
+        encrypted_key = encrypt_data(raw_key.strip())
+        env_var_name = f"{provider.upper()}_API_KEY_ENCRYPTED"
+        
+        set_key(ENV_FILE, env_var_name, encrypted_key)
+        click.secho("✅ Chave guardada com segurança em disco (Encriptada)!", fg="green")
+        click.echo("")
 
 def check_internet_connection(timeout=2):
     """Verifica se há conexão com a internet tentando conectar a um DNS global."""

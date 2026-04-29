@@ -9,6 +9,8 @@ import urllib.error
 from google import genai
 from src.security import decrypt_data
 from src.cache import get_cached_response, save_cached_response
+from src.config import get_api_key, get_api_model
+from src.ai_providers import call_ai_model
 
 def get_git_diff():
     """Executa 'git diff HEAD' e retorna a saída."""
@@ -78,8 +80,8 @@ def get_skill_context(action_type="pr"):
     return ""
 
 
-def generate_pr_content(diff_text, action_type="pr", skill_context=""):
-    """Envia o diff para o Gemini usando System Instruction e retorna um JSON parseado."""
+def generate_pr_content(action_folder, action_type, diff_text, provider="gemini"):
+    """Envia o diff para a IA usando System Instruction e retorna um JSON parseado."""
     if not diff_text or not diff_text.strip():
         click.secho("⚠️ Nenhum diff encontrado. Faça alguma alteração antes de rodar o comando.", fg="yellow")
         return None
@@ -93,23 +95,11 @@ def generate_pr_content(diff_text, action_type="pr", skill_context=""):
     }
     action_folder = action_folder_map.get(action_type, "misc")
 
-    # Preparação das Chaves e Modelo
-    api_key_encrypted = os.getenv("GEMINI_API_KEY")
-    if not api_key_encrypted:
-        click.secho("❌ GEMINI_API_KEY não encontrada.", fg="red")
-        return None    
-    
-    api_key = decrypt_data(api_key_encrypted)
-    if not api_key:
-        click.secho("❌ Falha ao descriptografar a GEMINI_API_KEY. Apague a pasta ~/.gitpr e reconfigure.", fg="red")
-        return None
-    api_model = os.getenv("GEMINI_API_MODEL", "gemini-2.5-flash")
+    # Busca o contexto do arquivo correspondente à ação (PR, Commit ou Review)
+    # Isso garante que a IA use o arquivo .md correto para cada comando
+    skill_context = get_skill_context(action_type)
 
     # Definição da Instrução de Sistema (Persona e Regras)
-    # Se houver skill_context, ele vira a regra mestre do sistema.
-    instrucao_sistema = skill_context if skill_context else "Atue como um Desenvolvedor Sênior e Revisor de Código exigente."
-
-    
     # O arquivo de skill baixado assume o comando. 
     # Se ele não existir (por algum motivo), usamos um fallback seguro.
     if action_type == "commit":
@@ -123,52 +113,36 @@ def generate_pr_content(diff_text, action_type="pr", skill_context=""):
     else: # pr
         instrucao_sistema = skill_context if skill_context else "Você é um Tech Lead redigindo descrições de PR limpas e técnicas."
         prompt = f"Gere APENAS um objeto JSON no formato {{\"commit_message\": \"...\", \"pr_description\": \"...\"}} para este diff:\n{diff_text}"
+
     # TENTA RECUPERAR DO CACHE
     cached_data = get_cached_response(action_folder, prompt)
     if cached_data:
         click.secho("⚡ Resposta recuperada do cache local.", fg="green", dim=True)
         return cached_data
 
-    # CHAMADA À API COM MECANISMO DE RETRY
-    max_retries = 3
-    retry_delay = 2 # segundos de espera entre tentativas
+    # Preparação das Chaves e Modelo (Agora dinâmico por Provedor)
+    api_key = get_api_key(provider)
+    if not api_key:
+        click.secho(f"❌ Erro: Chave de API para o provedor '{provider.capitalize()}' não encontrada.", fg="red")
+        return None
+    
+    # Define o modelo adequado carregando do .env (com fallbacks seguros)
+    api_model = get_api_model(provider)
+    if not api_model:
+        click.secho(f"❌ Erro: Não foi possível determinar o modelo para o provedor '{provider}'.", fg="red")
+        return None
 
-    click.secho("🤖 O GitPR está analisando o seu código...\n", fg="cyan")
-    client = genai.Client(api_key=api_key)
+    # CHAMADA À API (A lógica de Retry e Clientes agora vive em src/ai_providers.py)
+    click.secho(f"🤖 O GitPR está analisando o seu código usando {provider.capitalize()}...\n", fg="cyan")
+    
+    result_json = call_ai_model(provider, api_key, api_model, prompt, instrucao_sistema)
 
-    for attempt in range(1, max_retries + 1):
-        try:
-            response = client.models.generate_content(
-                model=api_model,
-                contents=prompt,
-                config={
-                    "system_instruction": instrucao_sistema,
-                    "response_mime_type": "application/json",
-                    "temperature": 0.0,
-                    "top_p": 0.1,
-                    "top_k": 1
-                }
-            )
-            
-            result_json = json.loads(response.text)
-
-            # 🛡️ ESCUDO: Se a IA retornar uma lista [ { ... } ]
-            if isinstance(result_json, list):
-                result_json = result_json[0] if result_json else {}
-
-            # SALVA NO CACHE E RETORNA
-            save_cached_response(action_folder, action_type, prompt, result_json)
-            return result_json
-
-        except Exception as e:
-            if attempt < max_retries:
-                # O dim=True deixa o texto mais apagado no terminal para não poluir visualmente
-                click.secho(f"⚠️ Instabilidade de rede detetada. A tentar novamente ({attempt}/{max_retries})...", fg="yellow", dim=True)
-                time.sleep(retry_delay)
-            else:
-                # Falhou em todas as tentativas
-                click.secho(f"❌ Erro crítico ao contactar a API do Gemini após {max_retries} tentativas: {str(e)}", fg="red", bold=True)
-                return None
+    # SALVA NO CACHE E RETORNA
+    if result_json:
+        save_cached_response(action_folder, action_type, prompt, result_json)
+        return result_json
+    
+    return None
 
 def generate_skill_template():
     """

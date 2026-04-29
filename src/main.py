@@ -4,14 +4,13 @@ import click
 import sys
 
 # Importações dos nossos módulos internos atualizadas
-from src.config import setup_environment, check_internet_connection
+from src.config import setup_environment, check_internet_connection, get_ai_provider
 from src.updater import check_and_update, __version__
 from src.core import (
     get_git_diff, 
     get_git_full_diff,
     get_current_branch, 
-    generate_pr_content,
-    get_skill_context,
+    generate_pr_content,  
     generate_skill_template,
     install_git_hooks
 )
@@ -45,7 +44,8 @@ def print_banner():
 @click.option('-ih', '--installhooks', is_flag=True, help="Instala automaticamente os Git Hooks de validação no projeto.")
 @click.option('--hook', type=click.Path(), hidden=True, help="Caminho do arquivo de commit (uso interno dos hooks).")
 @click.option('-q', '--quiet', is_flag=True, hidden=True, help="Oculta o banner e logs não essenciais (uso interno).")
-def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, quiet):
+@click.option('--provider', type=click.Choice(['gemini', 'deepseek']), help="Força a utilização de um provedor de IA específico nesta execução.")
+def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, quiet, provider):
     """
     GitPR CLI - Automação de PRs e Code Review com IA.
 
@@ -55,8 +55,6 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
     # Silencia o banner se estiver no modo quiet ou via hook
     if not quiet and not hook:
         print_banner()
-
-
 
     # Limpeza do Hot-Swap (Deleta o .old se existir)
     if getattr(sys, 'frozen', False):
@@ -119,8 +117,6 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
     if skill:
         generate_skill_template()
         return
-
- 
     
     if installhooks:
         if install_git_hooks():
@@ -140,10 +136,12 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
             click.echo("---\n")
         return
     
-    
     # Garante que o ambiente e as chaves estão configurados
     setup_environment()
 
+    # Determina o provedor de IA a ser usado (opção de linha de comando tem prioridade)
+    active_provider = provider if provider else get_ai_provider()
+    
     # Determina o tipo de ação e qual diff capturar
     action_type = "pr"
     diff_text = ""
@@ -167,11 +165,10 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
         click.secho("\n⚠️ Nenhum código novo encontrado. Faça alguma alteração ou verifique sua branch antes de rodar o comando.\n", fg="yellow")
         return
 
-    # Busca o contexto do arquivo correspondente à ação (PR ou Review)
-    skill_context = get_skill_context(action_type)
-
-    # Chama a IA do Gemini para gerar o conteúdo
-    data = generate_pr_content(diff_text, action_type, skill_context)
+    # Chama a IA de acordo com active_provider utilizando a nova assinatura da função
+    # A assinatura requer: action_folder, action_type, diff_text, provider
+    # Usamos o próprio action_type como action_folder, pois a função lida com isso internamente.
+    data = generate_pr_content(action_type, action_type, diff_text, active_provider)
     if not data:
         return
 
@@ -219,15 +216,17 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
         )
         content = data.get('review', 'Nenhuma análise gerada.')
         
-        linter_alerts = parse_diff_and_lint(diff_text)
+        # Correção: O linter retorna um dicionário. Precisamos extrair as mensagens das listas para iterar corretamente.
+        linter_results = parse_diff_and_lint(diff_text)
+        all_alerts = linter_results["errors"] + linter_results["warnings"]
         
-        if linter_alerts:
+        if all_alerts:
             
-            click.secho(f"⚠️ Atenção! Encontrados {len(linter_alerts)} alertas nas regras do Linter.", fg="yellow")
+            click.secho(f"⚠️ Atenção! Encontrados {len(all_alerts)} alertas nas regras do Linter.", fg="yellow")
             
             # Monta o cabeçalho com os erros do linter
             linter_header = "## 🚨 Alertas de Análise Estática Local (Regras YAML)\n\n"
-            for alert in linter_alerts:
+            for alert in all_alerts:
                 linter_header += f"- {alert}\n"
             linter_header += "\n---\n\n## 🤖 Code Review da IA\n\n"
             
@@ -266,6 +265,6 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
         click.secho(f"\n✅ Sucesso! O ficheiro '{output_filename}' foi gerado na pasta atual.", fg="green", bold=True)
     except Exception as e:
         click.secho(f"\n❌ Erro ao guardar o ficheiro: {e}", fg="red")
-
+        
 if __name__ == "__main__":
     cli()
