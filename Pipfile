@@ -9,6 +9,7 @@ click = "*"
 google-genai = "*"
 cryptography = "*"
 pyyaml = "*"
+openai = "*"
 
 [dev-packages]
 pyinstaller = "*"
