@@ -110,7 +110,7 @@ Você pode passar as seguintes *flags* para ações específicas:
 * `-u` ou `--update`: Verifica e instala a versão mais recente do GitPR (Auto-Updater).
 * `-h` ou `--help`: Exibe o menu de ajuda.
 
-> **⚙️ Nota Técnica (--hook):** O GitPR possui uma flag oculta `--hook <arquivo>` que é acionada exclusivamente pelo sistema de Git Hooks em background. Ela permite que a IA injete a mensagem sugerida diretamente no ficheiro temporário do Git, sem poluir o seu terminal.
+> **⚙️ Nota Técnica (--hook):** O GitPR possui uma flag oculta `--hook <arquivo>` que é acionada exclusivamente pelo sistema de Git Hooks em background. Ela permite que a IA injete a mensagem sugerida diretamente no arquivo temporário do Git, sem poluir o seu terminal.
 
 ## 🛡️ Linter Local (Análise Estática)
 

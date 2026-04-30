@@ -48,16 +48,10 @@ def _apply_rule(rule, code_line, line_number, current_file, alerts):
     except re.error as e:
         alerts["errors"].append(f"Regra '{rule.get('name')}' contém Regex inválida: {e}")
 
-def parse_diff_and_lint(diff_text):
+def parse_diff_and_lint(diff_text, is_full_file=False, file_path=None):
     """
-    Analisa o git diff e aplica as regras definidas no .gitpr.linter.yml.
+    Analisa o git diff OU um arquivo completo e aplica as regras definidas no .gitpr.linter.yml.
     Retorna um dicionário com duas listas: 'errors' (críticos) e 'warnings' (alertas).
-    
-    Args:
-        diff_text (str): O texto do git diff a ser analisado.
-        
-    Returns:
-        dict: Dicionário com as chaves 'errors' e 'warnings'.
     """
     rules = load_linter_rules()
     if not rules:
@@ -68,11 +62,37 @@ def parse_diff_and_lint(diff_text):
         "warnings": []
     }
 
+    lines = diff_text.split('\n')
+    
+    # ==========================================
+    # MODO ARQUIVO COMPLETO (--input)
+    # ==========================================
+    if is_full_file:
+        if not file_path:
+            return alerts
+            
+        # Normaliza o caminho para garantir compatibilidade entre Windows e Linux nas Regex
+        current_file = file_path.replace('\\', '/')
+        file_extension = current_file.split('.')[-1] if '.' in current_file else ''
+        
+        for i, line in enumerate(lines, start=1):
+            code_line = line.strip()
+            if not code_line:
+                continue
+            
+            for rule in rules:
+                if not _is_rule_applicable(rule, current_file, file_extension):
+                    continue
+                _apply_rule(rule, code_line, i, current_file, alerts)
+                
+        return alerts
+
+    # ==========================================
+    # MODO GIT DIFF PADRÃO
+    # ==========================================
     current_file = None
     file_extension = None
     line_number = 0
-
-    lines = diff_text.split('\n')
     
     for line in lines:
         if line.startswith('+++ b/'):
@@ -97,8 +117,6 @@ def parse_diff_and_lint(diff_text):
             for rule in rules:
                 if not _is_rule_applicable(rule, current_file, file_extension):
                     continue
-                
-                # Regra aplicável! Passa para a função de execução.
                 _apply_rule(rule, code_line, line_number, current_file, alerts)
 
     return alerts
