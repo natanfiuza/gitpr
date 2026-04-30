@@ -7,7 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv, set_key
 from src.security import encrypt_data, decrypt_data, get_or_create_key
 
-# Caminho para o ficheiro .env global na pasta do utilizador (ex: ~/.gitpr/.env)
+# Caminho para o arquivo .env global na pasta do utilizador (ex: ~/.gitpr/.env)
 ENV_FILE = os.path.join(os.path.expanduser("~"), ".gitpr", ".env")
 
 def get_ai_provider():

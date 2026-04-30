@@ -44,8 +44,9 @@ def print_banner():
 @click.option('-ih', '--installhooks', is_flag=True, help="Instala automaticamente os Git Hooks de validação no projeto.")
 @click.option('--hook', type=click.Path(), hidden=True, help="Caminho do arquivo de commit (uso interno dos hooks).")
 @click.option('-q', '--quiet', is_flag=True, hidden=True, help="Oculta o banner e logs não essenciais (uso interno).")
+@click.option('--input', '-i', type=click.Path(exists=True), help="Caminho de um arquivo específico para análise completa.")
 @click.option('--provider', type=click.Choice(['gemini', 'deepseek']), help="Força a utilização de um provedor de IA específico nesta execução.")
-def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, quiet, provider):
+def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, quiet, provider, input):
     """
     GitPR CLI - Automação de PRs e Code Review com IA.
 
@@ -136,6 +137,11 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
             click.echo("---\n")
         return
     
+    # Validação do Modo Input
+    if input and not (review or fullreview):
+        click.secho("\n❌ Erro: A opção --input (-i) só pode ser utilizada em conjunto com --review (-r) ou --fullreview (-f).", fg="red", bold=True)
+        return
+    
     # Garante que o ambiente e as chaves estão configurados
     setup_environment()
 
@@ -146,7 +152,17 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
     action_type = "pr"
     diff_text = ""
     
-    if commit:
+    if input:
+        # MODO FILE REVIEW: Lê o arquivo físico em vez do git diff
+        action_type = "filereview"
+        try:
+            with open(input, "r", encoding="utf-8") as f:
+                diff_text = f.read()
+            click.secho(f"📄 Modo Arquivo: Analisando conteúdo integral de '{input}'...", fg="blue")
+        except Exception as e:
+            click.secho(f"❌ Erro ao ler o arquivo: {e}", fg="red")
+            return
+    elif commit:
         action_type = "commit"
         diff_text = get_git_diff()
     elif review:
@@ -202,22 +218,28 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
             click.echo("\n")
         return
 
-    # Code Review (Arquivo)  
-    if action_type in ["review", "fullreview"]:
+    # Code Review e File Review (Arquivo)  
+    if action_type in ["review", "fullreview", "filereview"]:
         
         if fullreview:
             pattern = os.getenv("OUTPUT_FILE_NAME_FULLREVIEW", "{branch}_{datetime}_PR_FULLREVIEW.txt")
+        elif action_type == "filereview":
+            pattern = os.getenv("OUTPUT_FILE_NAME_FILEREVIEW", "{branch}_{datetime}_FILE_REVIEW.txt")
         else:
-            pattern = os.getenv("OUTPUT_FILE_NAME_REVIEW", "{branch}_{datetime}_PR_REVIEW.txt")
-            
+            pattern = os.getenv("OUTPUT_FILE_NAME_REVIEW", "{branch}_{datetime}_PR_REVIEW.txt")            
+
         output_filename = pattern.format(
             branch=safe_branch_name,
             datetime=current_time
         )
         content = data.get('review', 'Nenhuma análise gerada.')
         
-        # Correção: O linter retorna um dicionário. Precisamos extrair as mensagens das listas para iterar corretamente.
-        linter_results = parse_diff_and_lint(diff_text)
+        # Chama o Linter. Se for "filereview", ativa o modo de arquivo completo.
+        if action_type == "filereview":
+            linter_results = parse_diff_and_lint(diff_text, is_full_file=True, file_path=input)
+        else:
+            linter_results = parse_diff_and_lint(diff_text)
+            
         all_alerts = linter_results["errors"] + linter_results["warnings"]
         
         if all_alerts:
@@ -262,9 +284,9 @@ def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, q
     try:
         with open(output_filename, "w", encoding="utf-8") as f:
             f.write(markdown_content)
-        click.secho(f"\n✅ Sucesso! O ficheiro '{output_filename}' foi gerado na pasta atual.", fg="green", bold=True)
+        click.secho(f"\n✅ Sucesso! O arquivo '{output_filename}' foi gerado na pasta atual.", fg="green", bold=True)
     except Exception as e:
-        click.secho(f"\n❌ Erro ao guardar o ficheiro: {e}", fg="red")
+        click.secho(f"\n❌ Erro ao guardar o arquivo: {e}", fg="red")
         
 if __name__ == "__main__":
     cli()

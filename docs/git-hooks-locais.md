@@ -18,7 +18,7 @@ gitpr -ih
 
 1. Verifica a integridade do diretório .git/hooks.  
 2. Faz o download da versão mais recente dos scripts pre-commit e prepare-commit-msg diretamente do repositório oficial do GitPR.  
-3. Aplica automaticamente as permissões de execução POSIX (chmod +x) aos ficheiros, garantindo compatibilidade entre Linux, macOS e ambientes Git Bash no Windows.
+3. Aplica automaticamente as permissões de execução POSIX (chmod +x) aos arquivos, garantindo compatibilidade entre Linux, macOS e ambientes Git Bash no Windows.
 
 ---
 
@@ -57,7 +57,7 @@ Este hook elimina a necessidade de escrever mensagens de commit manualmente. Ele
 
 3. O hook entra em ação exibindo a mensagem: 🤖 GitPR: A pedir sugestão de commit à IA...  
 4. O GitPR roda a flag oculta --hook, enviando o seu *diff* para o Gemini.  
-5. A IA gera a mensagem e o script injeta o resultado de forma limpa na primeira linha do ficheiro temporário do Git.  
+5. A IA gera a mensagem e o script injeta o resultado de forma limpa na primeira linha do arquivo temporário do Git.  
 6. O seu editor de texto padrão (Vim, Nano, VS Code) abrirá com a mensagem já preenchida. Basta salvar e fechar para confirmar o commit.
 
 ### **Preservação do Fluxo Manual**
