@@ -1,15 +1,15 @@
 # **GitPR CLI 🚀**
 
-GitPR CLI é uma ferramenta de automação de linha de comando que utiliza a inteligência artificial do Google Gemini para analisar as suas alterações de código (git diff) e gerar automaticamente mensagens de commit no padrão *Conventional Commits*, além de uma descrição detalhada para o seu Pull Request.
+GitPR CLI é uma ferramenta de automação de linha de comando que utiliza a inteligência artificial do **Google Gemini** e do **DeepSeek** para analisar as suas alterações de código (git diff) ou ficheiros completos. A ferramenta gera automaticamente mensagens de commit no padrão *Conventional Commits*, descrições detalhadas para Pull Requests e Code Reviews profundos visando a redução de dívida técnica.
 
 ## **🛠️ Tecnologias e Bibliotecas Utilizadas**
 
 Este projeto foi desenvolvido em Python e utiliza as seguintes bibliotecas principais:
 
 * [**Click**](https://click.palletsprojects.com/): Para criar uma interface de linha de comando (CLI) robusta e amigável.  
-* [**Google GenAI**](https://pypi.org/project/google-genai/): Novo SDK oficial para integração direta com a API do Gemini (modelo gemini-2.5-flash).  
-* [**Python-dotenv**](https://pypi.org/project/python-dotenv/): Para a gestão segura de variáveis de ambiente.  
-* [**PyInstaller**](https://pyinstaller.org/): Para empacotar o projeto num único arquivo executável, facilitando a distribuição.
+* [**Google GenAI**](https://pypi.org/project/google-genai/): SDK oficial para integração direta com a API do Gemini.  
+* [**OpenAI**](https://pypi.org/project/openai/): Biblioteca utilizada devido à sua total compatibilidade com a poderosa API do **DeepSeek**.
+* [**Python-dotenv**](https://pypi.org/project/python-dotenv/): Para a gestão segura de variáveis de ambiente.
 * [**Pytest**](https://docs.pytest.org/): Para execução de testes unitários de forma simples, colorida e legível no console.
 * [**Cryptography**](https://cryptography.io/): Para garantir que sua `GEMINI_API_KEY` seja armazenada de forma encriptada e segura no disco.
 * [**PyYAML**](https://pyyaml.org/): Utilizado para ler e processar as regras customizadas de análise estática do arquivo `.gitpr.linter.yml`.
@@ -74,7 +74,6 @@ O Pytest irá detectar automaticamente os arquivos dentro da pasta `tests/` e ap
 
 > **🔒 Nota sobre Segurança:** O GitPR CLI utiliza criptografia simétrica (Fernet). Sua chave de API é armazenada como um hash no arquivo `.env`, e a chave mestra para desencriptação é gerada automaticamente em `~/.gitpr/secret.key`. **Nunca compartilhe seu arquivo secret.key.**
 
-
 ### A partir do Código-Fonte
 
 1. Clone o repositório: `git clone https://github.com/natanfiuza/gitpr.git`
@@ -83,7 +82,7 @@ O Pytest irá detectar automaticamente os arquivos dentro da pasta `tests/` e ap
 
 3. Atualize o ambiente:  
 ```bash  
-pipenv install google-genai python-dotenv click cryptography
+pipenv install google-genai openai python-dotenv click cryptography
 ``` 
 4. Execute: pipenv run python src/main.py
 
@@ -104,9 +103,11 @@ Você pode passar as seguintes *flags* para ações específicas:
 * `-c` ou `--commit`: Executa um `git diff` local e exibe **apenas a mensagem de commit** sugerida.
 * `-r` ou `--review`: Realiza um **Code Review** detalhado das alterações locais.
 * `-f` ou `--fullreview`: Realiza um **Code Review completo** analisando todas as alterações desde a branch remota.
+* `-i <arquivo>` ou `--input <arquivo>`: **Auditoria de Ficheiro Completo.** Usado obrigatoriamente em conjunto com `-r` ou `-f`, ele ignora o histórico do git e faz um Code Review do ficheiro inteiro. Excelente para atuar como consultor em refatoração de código legado.
+* `--provider <gemini|deepseek>`: Força a utilização de uma IA específica apenas para esta execução, ignorando o seu padrão guardado no `.env`.
 * `-l` ou `--linter`: Roda **apenas o linter estático local** (sem chamadas de IA). Ideal para usar em pipelines de CI/CD para bloquear código fora do padrão.
-* `-ih` ou `--installhooks`: Instala automaticamente os **Git Hooks locais** (`pre-commit` e `prepare-commit-msg`) no seu repositório para validação e auto-commit.
-* `-s` ou `--skill`: Cria os arquivos de template **`.gitpr.md`** e **`.gitpr.linter.yml`** na raiz do projeto.
+* `-ih` ou `--installhooks`: Instala automaticamente os **Git Hooks locais** (`pre-commit` e `prepare-commit-msg`) no seu repositório.
+* `-s` ou `--skill`: Cria os arquivos de template de contexto da IA (`.gitpr.commit.md`, `.gitpr.pr.md`, `.gitpr.review.md`, `.gitpr.filereview.md`) e do Linter (`.gitpr.linter.yml`) na raiz do projeto.
 * `-u` ou `--update`: Verifica e instala a versão mais recente do GitPR (Auto-Updater).
 * `-h` ou `--help`: Exibe o menu de ajuda.
 
@@ -133,6 +134,22 @@ rules:
 
 O Linter analisa apenas as **linhas adicionadas** no seu `git diff`, garantindo uma execução focada e extremamente rápida. Se houver violações, elas aparecerão com destaque no topo do seu arquivo de revisão.
 
+## 🧠 Arquitetura Multi-Model (Agnóstico de IA)
+
+O GitPR não está preso a uma única Inteligência Artificial. Durante a configuração inicial, o utilizador pode escolher o seu motor padrão. Atualmente suportamos:
+* **Google Gemini** (Padrão: `gemini-2.5-flash`)
+* **DeepSeek** (Padrão: `deepseek-chat`)
+
+Pode alternar dinamicamente os modelos configurando as variáveis `GEMINI_API_MODEL` ou `DEEPSEEK_API_MODEL` no seu arquivo `~/.gitpr/.env`, ou alternar em tempo real usando a flag `--provider`.
+
+## 🎯 Sistema de "Skills" Customizáveis (Prompt Engineering)
+
+Em vez de esconder as instruções da IA no código fonte, o GitPR utiliza arquivos Markdown locais que atuam como *System Instructions*. Ao rodar `gitpr -s`, os seguintes arquivos são gerados na raiz do seu projeto para poder customizar a "persona" da IA de acordo com as regras de negócio da sua empresa:
+
+* `.gitpr.commit.md`: Regras para geração das mensagens curtas de commit.
+* `.gitpr.pr.md`: Estrutura de tópicos exigida para a descrição do Pull Request.
+* `.gitpr.review.md`: Define o foco de arquitetura (ex: SOLID, Clean Code) para a análise de diffs.
+* `.gitpr.filereview.md`: Define regras rígidas de coesão e acoplamento para auditoria de um ficheiro completo (usado com `--input`).
 
 ## 📚 Documentação Técnica e Guias Avançados
 

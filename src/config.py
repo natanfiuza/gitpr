@@ -10,6 +10,19 @@ from src.security import encrypt_data, decrypt_data, get_or_create_key
 # Caminho para o arquivo .env global na pasta do utilizador (ex: ~/.gitpr/.env)
 ENV_FILE = os.path.join(os.path.expanduser("~"), ".gitpr", ".env")
 
+# Dicionário de configurações padrão para garantir que o .env esteja sempre completo
+DEFAULT_CONFIG = {
+    "DEFAULT_AI_PROVIDER": "gemini",
+    "GEMINI_API_MODEL_PRIMARY": "gemini-pro-latest",
+    "GEMINI_API_MODEL_SECONDARY": "gemini-flash-lite-latest",
+    "DEEPSEEK_API_MODEL_PRIMARY": "deepseek-v4-pro",
+    "DEEPSEEK_API_MODEL_SECONDARY": "deepseek-v4-flash",
+    "OUTPUT_FILE_NAME": "{branch}_{datetime}_PR_DESC.md",
+    "OUTPUT_FILE_NAME_REVIEW": "{branch}_{datetime}_PR_REVIEW.txt",
+    "OUTPUT_FILE_NAME_FULLREVIEW": "{branch}_{datetime}_PR_FULLREVIEW.txt",
+    "OUTPUT_FILE_NAME_FILEREVIEW": "{branch}_{datetime}_FILE_REVIEW.txt"
+}
+
 def get_ai_provider():
     """Retorna o provedor de IA padrão configurado, ou 'gemini' como fallback."""
     load_dotenv(ENV_FILE)
@@ -30,16 +43,19 @@ def get_api_key(provider):
         return decrypt_data(encrypted_key)
     return None
 
-def get_api_model(provider):
-    """Retorna o modelo de IA configurado no .env ou um fallback padrão."""
+def get_api_model(provider, task_complexity="advanced"):
+    """
+    Retorna o modelo de IA baseado no provedor e na complexidade da tarefa.
+    'simple' usa modelos secundários (Flash/Lite) - mais barato.
+    'advanced' usa modelos primários (Pro) - mais robusto.
+    """
     load_dotenv(ENV_FILE)
     
-    if provider == "gemini":
-        return os.getenv("GEMINI_API_MODEL", "gemini-pro-latest")
-    elif provider == "deepseek":
-        return os.getenv("DEEPSEEK_API_MODEL", "deepseek-v4-pro")
-        
-    return None
+    suffix = "PRIMARY" if task_complexity == "advanced" else "SECONDARY"
+    env_var = f"{provider.upper()}_API_MODEL_{suffix}"
+    
+    # Busca do .env, caso contrário usa o valor padrão do dicionário
+    return os.getenv(env_var, DEFAULT_CONFIG.get(env_var))
 
 def setup_environment():
     """Garante que as chaves de encriptação, o provedor padrão e a chave da API estão configurados."""
@@ -50,6 +66,16 @@ def setup_environment():
     get_or_create_key()
 
     load_dotenv(ENV_FILE)
+    
+    # Auto-preenchimento de variáveis faltantes com valores padrão
+    changes_made = False
+    for key, value in DEFAULT_CONFIG.items():
+        if os.getenv(key) is None:
+            set_key(ENV_FILE, key, value)
+            changes_made = True
+            
+    if changes_made:
+        load_dotenv(ENV_FILE) # Recarrega para garantir que os novos padrões estejam no ar
     
     # Pergunta o provedor padrão se não existir
     provider = os.getenv("DEFAULT_AI_PROVIDER")
