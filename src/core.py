@@ -99,7 +99,7 @@ def generate_pr_content(action_folder, action_type, diff_text, provider="gemini"
     # Busca o contexto do arquivo correspondente à ação (PR, Commit ou Review)
     skill_context = get_skill_context(action_type)
 
-    # 1. Definição da Complexidade da Tarefa (NOVO)
+    # Definição da Complexidade da Tarefa (NOVO)
     # Commits usam modelos mais rápidos/baratos. Reviews e PRs usam modelos avançados.
     task_complexity = "simple" if action_type == "commit" else "advanced"
 
@@ -131,7 +131,7 @@ def generate_pr_content(action_folder, action_type, diff_text, provider="gemini"
         click.secho(f"❌ Erro: Chave de API para o provedor '{provider.capitalize()}' não encontrada.", fg="red")
         return None
     
-    # 2. Busca o Modelo Inteligente (NOVO)
+    # Busca o Modelo Inteligente (NOVO)
     # Envia a complexidade para o config.py devolver o modelo primário ou secundário
     api_model = get_api_model(provider, task_complexity)
     if not api_model:
