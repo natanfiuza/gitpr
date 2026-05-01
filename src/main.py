@@ -44,8 +44,8 @@ def print_banner():
 @click.option('-ih', '--installhooks', is_flag=True, help="Instala automaticamente os Git Hooks de validação no projeto.")
 @click.option('--hook', type=click.Path(), hidden=True, help="Caminho do arquivo de commit (uso interno dos hooks).")
 @click.option('-q', '--quiet', is_flag=True, hidden=True, help="Oculta o banner e logs não essenciais (uso interno).")
-@click.option('--input', '-i', type=click.Path(exists=True), help="Caminho de um arquivo específico para análise completa.")
-@click.option('--provider', type=click.Choice(['gemini', 'deepseek']), help="Força a utilização de um provedor de IA específico nesta execução.")
+@click.option('-i', '--input', type=click.Path(exists=True), help="Caminho de um arquivo específico para análise completa.")
+@click.option('-p', '--provider', type=click.Choice(['gemini', 'deepseek']), help="Força a utilização de um provedor de IA específico nesta execução.")
 def cli(commit, review, fullreview, linter, skill, update, installhooks, hook, quiet, provider, input):
     """
     GitPR CLI - Automação de PRs e Code Review com IA.

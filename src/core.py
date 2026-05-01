@@ -80,7 +80,6 @@ def get_skill_context(action_type="pr"):
     # Retorna vazio se não existir
     return ""
 
-
 def generate_pr_content(action_folder, action_type, diff_text, provider="gemini"):
     """Envia o diff para a IA usando System Instruction e retorna um JSON parseado."""
     if not diff_text or not diff_text.strip():
@@ -98,12 +97,13 @@ def generate_pr_content(action_folder, action_type, diff_text, provider="gemini"
     action_folder = action_folder_map.get(action_type, "misc")
 
     # Busca o contexto do arquivo correspondente à ação (PR, Commit ou Review)
-    # Isso garante que a IA use o arquivo .md correto para cada comando
     skill_context = get_skill_context(action_type)
 
+    # Definição da Complexidade da Tarefa (NOVO)
+    # Commits usam modelos mais rápidos/baratos. Reviews e PRs usam modelos avançados.
+    task_complexity = "simple" if action_type == "commit" else "advanced"
+
     # Definição da Instrução de Sistema (Persona e Regras)
-    # O arquivo de skill baixado assume o comando. 
-    # Se ele não existir (por algum motivo), usamos um fallback seguro.
     if action_type == "commit":
         instrucao_sistema = skill_context if skill_context else "Você é um especialista em Git. Gere mensagens de commit concisas."
         prompt = f"Gere APENAS um objeto JSON no formato {{\"commit_message\": \"...\"}} para este diff:\n{diff_text}"
@@ -125,20 +125,21 @@ def generate_pr_content(action_folder, action_type, diff_text, provider="gemini"
         click.secho("⚡ Resposta recuperada do cache local.", fg="green", dim=True)
         return cached_data
 
-    # Preparação das Chaves e Modelo (Agora dinâmico por Provedor)
+    # Preparação das Chaves (Agora dinâmico por Provedor)
     api_key = get_api_key(provider)
     if not api_key:
         click.secho(f"❌ Erro: Chave de API para o provedor '{provider.capitalize()}' não encontrada.", fg="red")
         return None
     
-    # Define o modelo adequado carregando do .env (com fallbacks seguros)
-    api_model = get_api_model(provider)
+    # Busca o Modelo Inteligente (NOVO)
+    # Envia a complexidade para o config.py devolver o modelo primário ou secundário
+    api_model = get_api_model(provider, task_complexity)
     if not api_model:
         click.secho(f"❌ Erro: Não foi possível determinar o modelo para o provedor '{provider}'.", fg="red")
         return None
 
-    # CHAMADA À API (A lógica de Retry e Clientes agora vive em src/ai_providers.py)
-    click.secho(f"🤖 O GitPR está analisando o seu código usando {provider.capitalize()}...\n", fg="cyan")
+    # CHAMADA À API
+    click.secho(f"🤖 O GitPR está analisando o seu código usando {provider.capitalize()} ({api_model})...\n", fg="cyan")
     
     result_json = call_ai_model(provider, api_key, api_model, prompt, instrucao_sistema)
 
